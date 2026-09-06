@@ -1,0 +1,4 @@
+work/
+out/
+repo/
+*.pkg.tar.zst
