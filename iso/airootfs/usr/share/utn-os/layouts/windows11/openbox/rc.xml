@@ -1,0 +1,11 @@
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <theme><name>Clearlooks</name></theme>
+  <placement><policy>Smart</policy></placement>
+  <desktops>
+    <number>2</number>
+    <names><name>Principal</name><name>Segundo</name></names>
+  </desktops>
+  <resistance><decor>8</decor></resistance>
+  <focus><focusNew>yes</focusNew><followMouse>no</followMouse></focus>
+  <margins><top>0</top><bottom>0</bottom><left>0</left><right>0</right></margins>
+</openbox_config>

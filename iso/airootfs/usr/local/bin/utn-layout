@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+LAYOUT_DIR="/usr/share/utn-os/layouts"
+CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+BACKUP_DIR="$CONF_DIR/utn-os-backup"
+
+usage() {
+    echo "Uso: utn-layout <moderno|windows11>"
+    echo "Cambia la apariencia del escritorio a un layout preconfigurado."
+}
+
+if [ $# -ne 1 ]; then
+    usage
+    exit 1
+fi
+
+LAYOUT="$1"
+SRC="$LAYOUT_DIR/$LAYOUT"
+
+if [ ! -d "$SRC" ]; then
+    echo "Layout '$LAYOUT' no existe. Disponibles:"
+    for d in "$LAYOUT_DIR"/*/; do
+        basename "$d"
+    done
+    exit 1
+fi
+
+mkdir -p "$BACKUP_DIR"
+
+copy_preset() {
+    local src="$1"
+    local dst="$2"
+    local src_file="$SRC/$src"
+    local dst_file="$CONF_DIR/$dst"
+    if [ -f "$src_file" ]; then
+        mkdir -p "$(dirname "$dst_file")"
+        if [ -f "$dst_file" ] && [ ! -L "$dst_file" ]; then
+            cp -a "$dst_file" "$BACKUP_DIR/$(basename "$dst")" 2>/dev/null || true
+        fi
+        mkdir -p "$(dirname "$src_file")"
+        cp -a "$src_file" "$dst_file"
+    fi
+}
+
+copy_preset lxqt/panel.conf lxqt/panel.conf
+copy_preset lxqt/lxqt.conf lxqt/lxqt.conf
+copy_preset openbox/rc.xml openbox/rc.xml
+copy_preset pcmanfm/settings.conf pcmanfm/lxqt/settings.conf
+
+WM="$(readlink -f "$CONF_DIR/lxqt/lxqt.conf" >/dev/null 2>&1; true)"
+
+echo "Layout '$LAYOUT' aplicado. Cierra sesión y vuelve a entrar para ver los cambios."

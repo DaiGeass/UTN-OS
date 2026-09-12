@@ -1,0 +1,6 @@
+name = "windows11"
+display = "Windows 11"
+description = "Panel inferior centrado estilo Windows 11, esquinas redondeadas y fondo oscuro."
+base = "lxqt"
+packages = ["picom"]
+default = false
