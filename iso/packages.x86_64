@@ -127,3 +127,12 @@ xdg-utils
 xfsprogs
 xl2tpd
 zsh
+xorg-server
+xorg-xinit
+lxqt
+breeze-icons
+sddm
+networkmanager
+network-manager-applet
+pcmanfm-qt
+qterminal
