@@ -47,7 +47,12 @@ copy_preset lxqt/panel.conf lxqt/panel.conf
 copy_preset lxqt/lxqt.conf lxqt/lxqt.conf
 copy_preset openbox/rc.xml openbox/rc.xml
 copy_preset pcmanfm/settings.conf pcmanfm/lxqt/settings.conf
+copy_preset kvantum/kvantum.kvconfig Kvantum/kvantum.kvconfig
+copy_preset picom.conf picom.conf
 
-WM="$(readlink -f "$CONF_DIR/lxqt/lxqt.conf" >/dev/null 2>&1; true)"
+if command -v picom >/dev/null 2>&1; then
+    pkill -x picom 2>/dev/null || true
+    picom --config "$CONF_DIR/picom.conf" >/dev/null 2>&1 &
+fi
 
 echo "Layout '$LAYOUT' aplicado. Cierra sesión y vuelve a entrar para ver los cambios."
