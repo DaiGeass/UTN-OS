@@ -1,0 +1,713 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Instalador gráfico de UTN OS (estilo asistente).
+
+Pasos: bienvenida/teclado -> disco -> usuarios -> resumen -> instalación -> fin.
+Corre como root en el live y copia el sistema live al disco de destino.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+
+from PyQt5 import QtCore, QtWidgets
+
+MOUNT = "/mnt/utnroot"
+LIVE_SFS = "/run/archiso/bootmnt/arch/x86_64/airootfs.sfs"
+
+LAYOUTS = ["macos", "windows8", "windows11", "moderno"]
+TIMEZONES = [
+    "America/Argentina/Buenos_Aires",
+    "America/Mexico_City",
+    "America/Monterrey",
+    "America/Bogota",
+    "America/Caracas",
+    "America/Lima",
+    "America/Santiago",
+    "America/Sao_Paulo",
+    "Europe/Madrid",
+]
+KEYBOARDS = ["es", "latam", "us", "br", "fr", "de", "pt", "it", "uk"]
+FILESYSTEMS = ["ext4", "btrfs", "xfs", "jfs", "f2fs"]
+
+
+def run(cmd, check=True, timeout=900):
+    """Ejecuta un comando y devuelve la salida. Log a la consola."""
+    p = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    out, _ = p.communicate(timeout=timeout)
+    if check and p.returncode != 0:
+        raise RuntimeError(f"Fallo: {' '.join(cmd)}\n{out}")
+    return out
+
+
+def is_uefi():
+    return os.path.isdir("/sys/firmware/efi")
+
+
+def disks():
+    """"Lista de discos (sata, nvme, virtio), sin loop/ram/rom."""
+    out = run(["lsblk", "-J", "-o", "NAME,SIZE,MODEL,TYPE,TRAN"], check=False)
+    try:
+        data = json.loads(out)
+    except json.JSONDecodeError:
+        return []
+    devs = []
+    for d in data.get("blockdevices", []):
+        name = d.get("name", "")
+        if (d.get("type") == "disk"
+                and re.match(r"^(sd|hd|vd|nvme)", name)):
+            devs.append(d)
+    return devs
+
+
+def disk_mounted(name):
+    """True si algún fs del disco está montado (protege el live/USB)."""
+    out = run(["lsblk", "-lno", "MOUNTPOINT", f"/dev/{name}"], check=False)
+    return any(mp.strip() for mp in out.splitlines() if mp.strip())
+
+
+class InstallWorker(QtCore.QThread):
+    log = QtCore.pyqtSignal(str)
+    progress = QtCore.pyqtSignal(int)
+    done = QtCore.pyqtSignal(bool, str)
+
+    def __init__(self, opts, parent=None):
+        super().__init__(parent)
+        self.opts = opts
+
+    def _log(self, msg, progress=None):
+        self.log.emit(msg)
+        if progress is not None:
+            self.progress.emit(progress)
+
+    def run(self):
+        try:
+            self.install()
+            self.done.emit(True, "Instalación completada. Presioná Reiniciar.")
+        except Exception as exc:
+            self._log(f"\n[ERROR] {exc}")
+            self.done.emit(False, str(exc))
+
+    # ---------------------------------------------------------------- steps
+    def _parted_bios(self, disk):
+        run(["parted", "-s", disk, "mklabel", "msdos"])
+        swap = self.opts["swap"]
+        if swap:
+            run(["parted", "-s", disk, "mkpart", "primary", "ext4",
+                 "1MiB", f"-{swap}GiB"])
+            run(["parted", "-s", disk, "set", "1", "boot", "on"])
+            run(["parted", "-s", disk, "mkpart", "primary", "linux-swap",
+                 f"-{swap}GiB", "100%"])
+        else:
+            run(["parted", "-s", disk, "mkpart", "primary", "ext4",
+                 "1MiB", "100%"])
+            run(["parted", "-s", disk, "set", "1", "boot", "on"])
+
+    def _sgdisk_uefi(self, disk):
+        run(["sgdisk", "--zap-all", disk])
+        run(["sgdisk", "--clear", disk])
+        run(["sgdisk", "-n", "1:0:+512M", "-t", "1:ef00", "-c", "1:EFI", disk])
+        swap = self.opts["swap"]
+        if swap:
+            run(["sgdisk", "-n", "2:0:-{}G".format(swap), "-t", "2:8304",
+                 "-c", "2:ROOT", disk])
+            run(["sgdisk", "-n", "3:0:0", "-t", "3:8200", "-c", "3:SWAP",
+                 disk])
+        else:
+            run(["sgdisk", "-n", "2:0:0", "-t", "2:8304", "-c", "2:ROOT",
+                 disk])
+
+    def _wait_partitions(self, disk, count):
+        run(["partprobe", disk])
+        base = os.path.basename(disk)
+        for _ in range(20):
+            parts = run(["lsblk", "-lno", "NAME", disk], check=False)
+            names = [p.strip() for p in parts.splitlines() if p.strip()]
+            if len(names) >= count + 1:
+                return names[1:]
+            time.sleep(0.5)
+        raise RuntimeError("No se reconocieron las particiones creadas")
+
+    def install(self):
+        opts = self.opts
+        disk = opts["disk"]
+        fs = opts["filesystem"]
+        swap = opts["swap"]
+
+        self._log("==" * 30)
+        self._log("   INSTALL UTNOS  -  by DaiGeass/ZZERO")
+        self._log("==" * 30)
+        self._log(f"Sistema: {'UEFI' if is_uefi() else 'BIOS'}")
+        self._log(f"Disco:   {disk}")
+        self._log(f"Sistema de archivos raíz: {fs}")
+        self._log(f"Swap:    {swap} GiB" if swap else "Swap: no")
+
+        steps = [
+            ("Particionando disco", 8),
+            ("Formateando particiones", 18),
+            ("Montando particiones", 22),
+            ("Copiando sistema (rsync)", 65),
+            ("Configurando sistema", 88),
+            ("Instalando GRUB", 97),
+        ]
+        for name, pct in steps:
+            self._log(f"\n== {name} ==")
+            self.progress.emit(pct)
+
+        if self._partition(disk, fs, swap):
+            self._format(disk, fs, swap)
+            self._mount(disk)
+            self._copy_system()
+            self._configure(disk)
+            self._grub(disk)
+        self.progress.emit(100)
+
+    def _partition(self, disk, fs, swap):
+        if is_uefi():
+            self._sgdisk_uefi(disk)
+        else:
+            self._parted_bios(disk)
+
+        expected = (2 if is_uefi() else 1) + (1 if swap else 0)
+        parts = self._wait_partitions(disk, expected)
+        if len(parts) < expected:
+            raise RuntimeError("Particionado falló")
+        self.opts["parts"] = [f"/dev/{p}" for p in parts]
+        self._log(f"Particiones: {', '.join(self.opts['parts'])}")
+        return True
+
+    def _format(self, disk, fs, swap):
+        parts = self.opts["parts"]
+        if is_uefi():
+            efi, rootish = parts[0], parts[1]
+            root = rootish
+            run(["mkfs.vfat", "-F32", "-n", "EFI", efi])
+            self._log(f"  EFI  {efi}  (vfat)")
+        else:
+            root = parts[0]
+        if root:
+            mkfs = {
+                "ext4": ["mkfs.ext4", "-F", "-L", "UTNROOT", root],
+                "btrfs": ["mkfs.btrfs", "-f", "-L", "UTNROOT", root],
+                "xfs": ["mkfs.xfs", "-f", "-L", "UTNROOT", root],
+                "jfs": ["mkfs.jfs", "-q", "-L", "UTNROOT", root],
+                "f2fs": ["mkfs.f2fs", "-f", "-l", "UTNROOT", root],
+            }[fs]
+            self._log(f"  ROOT {root}  ({fs})")
+            run(mkfs)
+        if swap:
+            run(["mkswap", "-L", "swap", parts[-1]])
+            self._log(f"  SWAP {parts[-1]}")
+
+    def _mount(self, disk):
+        parts = self.opts["parts"]
+        os.makedirs(MOUNT, exist_ok=True)
+        if is_uefi():
+            root, efi = parts[1], parts[0]
+        else:
+            root, efi = parts[0], None
+        run(["mount", root, MOUNT])
+        if efi:
+            os.makedirs(f"{MOUNT}/boot/efi", exist_ok=True)
+            run(["mount", efi, f"{MOUNT}/boot/efi"])
+        if self.opts["swap"]:
+            run(["swapon", parts[-1]], check=False)
+        self._log(f"  Montado {root} en {MOUNT}")
+
+    def _copy_system(self):
+        excludes = [
+            "/dev", "/proc", "/sys", "/run", "/tmp", "/mnt",
+            "/media", "/lost+found", "/var/cache/pacman/pkg",
+            "/etc/machine-id", "/etc/hostname", "/etc/fstab",
+            "/.wh.*", "/etc/xdg/autostart/utn-welcome.desktop",
+            "/etc/xdg/autostart/utn-installer.desktop",
+            "/usr/local/bin/utn-installer-live",
+            "/usr/local/bin/utn-welcome",
+        ]
+        cmd = ["rsync", "-aHAXx", "--info=progress2", "--no-i-r", "--stats"]
+        for ex in excludes:
+            cmd.append(f"--exclude={ex}")
+        cmd += ["/", f"{MOUNT}/"]
+        self._log("  Copiando sistema raíz (puede tardar unos minutos)...")
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT, text=True)
+        buf = ""
+        last = 0.0
+        while True:
+            chunk = p.stdout.read(4096)
+            if not chunk:
+                break
+            buf += chunk
+            while "\n" in buf or "\r" in buf:
+                line, _, buf = re.split(r"[\r\n]", buf, maxsplit=1)
+                line = line.strip()
+                if not line:
+                    continue
+                m = re.search(r"(\d+(\.\d+)?)%", line)
+                if m and float(m.group(1)) < 100:
+                    if time.time() - last > 0.5:
+                        self.progress.emit(65 + int(float(m.group(1)) / 100 * 20))
+                        last = time.time()
+                elif m:
+                    self.progress.emit(85)
+                else:
+                    self._log(line)
+            time.sleep(0.05)
+        p.wait()
+        if p.returncode != 0:
+            raise RuntimeError("rsync falló al copiar el sistema")
+        self.progress.emit(87)
+        self._log("  Copia del sistema finalizada")
+
+    def _configure(self, disk):
+        opt = self.opts
+        script = f"""#!/bin/bash
+set -e
+echo '== Configurando sistema =='
+
+# zona horaria
+ln -sf /usr/share/zoneinfo/{opt['timezone']} /etc/localtime
+
+# hostname
+echo '{opt['hostname']}' > /etc/hostname
+
+# locale es_MX
+sed -i 's/^#es_MX.UTF-8/es_MX.UTF-8/' /etc/locale.gen
+grep -q '^es_MX.UTF-8' /etc/locale.gen || echo 'es_MX.UTF-8 UTF-8' >> /etc/locale.gen
+locale-gen >/dev/null 2>&1 || true
+echo 'LANG=es_MX.UTF-8' > /etc/locale.conf
+
+# teclado
+echo 'KEYMAP={opt['keyboard']}' > /etc/vconsole.conf
+mkdir -p /etc/X11/xorg.conf.d
+cat > /etc/X11/xorg.conf.d/00-keyboard.conf <<XEOF
+Section "InputClass"
+    Identifier "keyboard-layout"
+    MatchIsKeyboard "on"
+    Option "XkbLayout" "{opt['keyboard']}"
+EndSection
+XEOF
+
+# usuarios
+useradd -m -G wheel,users,audio,video,storage,lp,network,power -s /bin/bash {opt['username']} 2>/dev/null || true
+echo '{opt['username']}:{opt['password']}' | chpasswd
+echo 'root:{opt['root_password']}' | chpasswd
+mkdir -p /etc/sudoers.d
+echo '{opt['username']} ALL=(ALL) ALL' > /etc/sudoers.d/10-{opt['username']}
+chmod 440 /etc/sudoers.d/10-{opt['username']}
+
+# autologin + sesión LXQt
+mkdir -p /etc/sddm.conf.d
+cat > /etc/sddm.conf.d/autologin.conf <<XEOF
+[Autologin]
+User={opt['username']}
+Session=lxqt
+XEOF
+
+# layout de escritorio elegido (default de /etc/xdg)
+LAYOUT=/usr/share/utn-os/layouts/{opt['layout']}
+for f in panel.conf lxqt.conf; do
+    install -Dm644 "$LAYOUT/lxqt/$f" "/etc/xdg/lxqt/$f"
+done
+install -Dm644 "$LAYOUT/openbox/rc.xml" /etc/xdg/openbox/rc.xml
+install -Dm644 "$LAYOUT/pcmanfm/settings.conf" /etc/xdg/pcmanfm/lxqt/settings.conf
+
+# limpiar config live y regenerar initramfs estándar
+rm -rf /etc/mkinitcpio.conf.d /etc/mkinitcpio.d
+rm -rf /etc/systemd/system/getty@tty1.service.d
+rm -f /root/.ssh/authorized_keys
+rm -f /etc/ssh/sshd_config.d/99-utn-debug.conf
+mkdir -p /etc/mkinitcpio.d
+cat > /etc/mkinitcpio.d/linux.preset <<XEOF
+PRESETS=('default' 'fallback')
+ALL_kver='/boot/vmlinuz-linux'
+default_config='/etc/mkinitcpio.conf'
+default_image="/boot/initramfs-linux.img"
+fallback_config='/etc/mkinitcpio.conf'
+fallback_image="/boot/initramfs-linux-fallback.img"
+fallback_options='-S autodetect'
+XEOF
+mkinitcpio -P >/dev/null 2>&1 || true
+
+# servicios
+systemctl enable NetworkManager sddm >/dev/null 2>&1 || true
+
+# fstab
+genfstab -U / > /etc/fstab
+
+echo '== Fin de configuración =='
+"""
+        with open(f"{MOUNT}/tmp/setup.sh", "w") as fh:
+            fh.write(script)
+        os.chmod(f"{MOUNT}/tmp/setup.sh", 0o755)
+
+        # genfstab se corre desde el host (en root del target)
+        fstab = subprocess.run(
+            ["genfstab", "-U", MOUNT], capture_output=True, text=True
+        ).stdout
+        with open(f"{MOUNT}/etc/fstab", "w") as fh:
+            fh.write(fstab)
+        self._log("  Fstab generado: " + " | ".join(fstab.splitlines()[:4]))
+
+        run(["arch-chroot", MOUNT, "/bin/bash", "/tmp/setup.sh"])
+        run(["rm", "-f", f"{MOUNT}/tmp/setup.sh"])
+        self._log("  Configuración aplicada")
+        self._log(f"  Usuario: {opt['username']}")
+
+    def _grub(self, disk):
+        boot_id = "UTN_OS"
+        run(["arch-chroot", MOUNT, "/bin/bash", "-c",
+             "printf '%s\\n' "
+             "'GRUB_DEFAULT=0' "
+             "'GRUB_TIMEOUT=5' "
+             "'GRUB_DISTRIBUTOR=\"UTN OS\"' "
+             "'GRUB_BACKGROUND=/boot/grub/utn-splash.png' "
+             "'GRUB_GFXMODE=1024x768,800x600,auto' "
+             "'GRUB_DISABLE_OS_PROBER=false' "
+             "> /etc/default/grub"])
+        if is_uefi():
+            run(["arch-chroot", MOUNT, "grub-install",
+                 "--target=x86_64-efi", "--efi-directory=/boot/efi",
+                 f"--bootloader-id={boot_id}", "--recheck"])
+        else:
+            run(["arch-chroot", MOUNT, "grub-install",
+                 "--target=i386-pc", "--recheck", disk])
+        run(["arch-chroot", MOUNT, "/bin/bash", "-c",
+             "mkdir -p /boot/grub && cp /usr/share/utn-os/splash.png "
+             "/boot/grub/utn-splash.png"])
+        run(["arch-chroot", MOUNT, "grub-mkconfig", "-o",
+             "/boot/grub/grub.cfg"])
+        run(["umount", "-R", MOUNT])
+        self._log("  GRUB instalado")
+
+
+class InstallerWindow(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        self._worker = None
+        self._opts = {}
+        self.setWindowTitle("INSTALL UTNOS by DaiGeass/ZZERO")
+        self.setMinimumSize(760, 560)
+        self.layout = QtWidgets.QVBoxLayout(self)
+
+        self.stack = QtWidgets.QStackedWidget(self)
+        self.layout.addWidget(self.stack)
+
+        self._build_welcome()
+        self._build_disk()
+        self._build_users()
+        self._build_summary()
+        self._build_install()
+        self._build_finish()
+
+        self.buttons = QtWidgets.QHBoxLayout()
+        self.btn_back = QtWidgets.QPushButton("Atrás")
+        self.btn_next = QtWidgets.QPushButton("Siguiente")
+        self.btn_next.setDefault(True)
+        self.btn_back.clicked.connect(self.back)
+        self.btn_next.clicked.connect(self.next)
+        self.buttons.addStretch(1)
+        self.buttons.addWidget(self.btn_back)
+        self.buttons.addWidget(self.btn_next)
+        self.layout.addLayout(self.buttons)
+
+        self.stack.currentChanged.connect(self._page_changed)
+        self.stack.setCurrentIndex(0)
+
+    # ---------------------------------------------------------------- pages
+    def _add_page(self, widget):
+        self.stack.addWidget(widget)
+
+    def _build_welcome(self):
+        page = QtWidgets.QWidget()
+        v = QtWidgets.QVBoxLayout(page)
+        title = QtWidgets.QLabel(
+            "INSTALL UTNOS\nby DaiGeass/ZZERO")
+        title.setStyleSheet("font-size:26px; font-weight:bold;")
+        v.addWidget(title)
+        v.addWidget(QtWidgets.QLabel(
+            "Bienvenido. El sistema se copiará tal cual vive en el medio, "
+            "con el escritorio LXQt y los layouts disponibles.\n\n"
+            "Seleccioná la distribución de teclado para el sistema instalado:"))
+
+        self.kbd = QtWidgets.QComboBox()
+        self.kbd.addItems(KEYBOARDS)
+        v.addWidget(self.kbd)
+        v.addWidget(QtWidgets.QLabel("Zona horaria:"))
+        self.tz = QtWidgets.QComboBox()
+        self.tz.addItems(TIMEZONES)
+        v.addWidget(self.tz)
+        v.addStretch(1)
+        warn = QtWidgets.QLabel(
+            "ATENCIÓN: la instalación BORRA TODO el disco elegido.")
+        warn.setStyleSheet("color:#b00020;")
+        v.addWidget(warn)
+        self._add_page(page)
+
+    def _build_disk(self):
+        page = QtWidgets.QWidget()
+        v = QtWidgets.QVBoxLayout(page)
+        title = QtWidgets.QLabel("Selección de disco")
+        title.setStyleSheet("font-size:18px; font-weight:bold;")
+        v.addWidget(title)
+        self.disk_combo = QtWidgets.QComboBox()
+        v.addWidget(self.disk_combo)
+        self.disk_status = QtWidgets.QLabel("")
+        self.disk_status.setStyleSheet("color:#b00020;")
+        v.addWidget(self.disk_status)
+
+        self.swap_chk = QtWidgets.QCheckBox("Crear partición swap")
+        self.swap_chk.setChecked(True)
+        v.addWidget(self.swap_chk)
+        self.swap_size = QtWidgets.QSpinBox()
+        self.swap_size.setRange(1, 32)
+        self.swap_size.setValue(4)
+        self.swap_size.setSuffix(" GiB")
+        v.addWidget(self.swap_size)
+
+        v.addWidget(QtWidgets.QLabel("Sistema de archivos raíz:"))
+        self.fs_combo = QtWidgets.QComboBox()
+        self.fs_combo.addItems(FILESYSTEMS)
+        v.addWidget(self.fs_combo)
+        v.addStretch(1)
+
+        self.refresh_disk_btn = QtWidgets.QPushButton("Actualizar lista")
+        self.refresh_disk_btn.clicked.connect(self._refresh_disks)
+        v.addWidget(self.refresh_disk_btn)
+        self._refresh_disks()
+        self._add_page(page)
+
+    def _refresh_disks(self):
+        self.disk_combo.clear()
+        for d in disks():
+            label = f"/dev/{d['name']}  ({d['size']} {d.get('model','') or ''})"
+            self.disk_combo.addItem(label.strip(), f"/dev/{d['name']}")
+
+    def _build_users(self):
+        page = QtWidgets.QWidget()
+        form = QtWidgets.QFormLayout(page)
+        title = QtWidgets.QLabel("Datos de usuario")
+        title.setStyleSheet("font-size:18px; font-weight:bold;")
+        form.addRow(title)
+
+        self.hostname = QtWidgets.QLineEdit("utn-pc")
+        form.addRow("Nombre del equipo:", self.hostname)
+        self.username = QtWidgets.QLineEdit("utn")
+        form.addRow("Nombre de usuario:", self.username)
+        self.fullname = QtWidgets.QLineEdit("UTN User")
+        form.addRow("Nombre completo:", self.fullname)
+        self.passwd = QtWidgets.QLineEdit()
+        self.passwd.setEchoMode(QtWidgets.QLineEdit.Password)
+        form.addRow("Contraseña del usuario:", self.passwd)
+        self.passwd2 = QtWidgets.QLineEdit()
+        self.passwd2.setEchoMode(QtWidgets.QLineEdit.Password)
+        form.addRow("Confirmar contraseña:", self.passwd2)
+        self.root_passwd = QtWidgets.QLineEdit()
+        self.root_passwd.setEchoMode(QtWidgets.QLineEdit.Password)
+        form.addRow("Contraseña de root:", self.root_passwd)
+
+        form.addRow(QtWidgets.QLabel(""))
+        form.addRow(QtWidgets.QLabel("Apariencia del escritorio instalado:"))
+        self.layout_combo = QtWidgets.QComboBox()
+        codes = {"macos": "macOS", "windows8": "Windows 8",
+                 "windows11": "Windows 11", "moderno": "Moderno"}
+        for code, name in codes.items():
+            self.layout_combo.addItem(name, code)
+        self.layout_combo.setCurrentIndex(0)
+        form.addRow("Layout:", self.layout_combo)
+        self._add_page(page)
+
+    def _build_summary(self):
+        page = QtWidgets.QWidget()
+        v = QtWidgets.QVBoxLayout(page)
+        title = QtWidgets.QLabel("Resumen de la instalación")
+        title.setStyleSheet("font-size:18px; font-weight:bold;")
+        v.addWidget(title)
+        self.summary = QtWidgets.QPlainTextEdit()
+        self.summary.setReadOnly(True)
+        v.addWidget(self.summary)
+        v.addWidget(QtWidgets.QLabel(
+            "Todos los datos del disco seleccionado serán eliminados."))
+        self._add_page(page)
+
+    def _build_install(self):
+        page = QtWidgets.QWidget()
+        v = QtWidgets.QVBoxLayout(page)
+        title = QtWidgets.QLabel("Instalando UTN OS...")
+        title.setStyleSheet("font-size:18px; font-weight:bold;")
+        v.addWidget(title)
+        self.bar = QtWidgets.QProgressBar()
+        v.addWidget(self.bar)
+        self.log_view = QtWidgets.QPlainTextEdit()
+        self.log_view.setReadOnly(True)
+        self.log_view.setMaximumBlockCount(1000)
+        v.addWidget(self.log_view)
+        self._add_page(page)
+
+    def _build_finish(self):
+        page = QtWidgets.QWidget()
+        v = QtWidgets.QVBoxLayout(page)
+        title = QtWidgets.QLabel("Instalación finalizada")
+        title.setStyleSheet("font-size:20px; font-weight:bold;")
+        v.addWidget(title)
+        self.finish_msg = QtWidgets.QLabel("")
+        v.addWidget(self.finish_msg)
+        self.btn_reboot = QtWidgets.QPushButton("Reiniciar")
+        self.btn_reboot.clicked.connect(
+            lambda: os.system("systemctl reboot"))
+        v.addWidget(self.btn_reboot, 0, QtCore.Qt.AlignRight)
+        v.addStretch(1)
+        self._add_page(page)
+
+    # ------------------------------------------------------------- navigation
+    def _page_changed(self, idx):
+        last = self.stack.count() - 1
+        self.btn_back.setVisible(idx > 0 and idx < 3)
+        if idx == 0:
+            self.btn_back.setEnabled(False)
+        else:
+            self.btn_back.setEnabled(True)
+        self.btn_next.setVisible(idx != 4 and idx != last)
+        self.btn_next.setText("Siguiente")
+        if idx == 2:
+            self.btn_next.setText("Instalar")
+        if idx == 3:
+            self.btn_next.setVisible(False)
+            self.btn_reboot.setEnabled(False)
+        if idx == 4:
+            self.btn_next.setVisible(False)
+
+    def next(self):
+        idx = self.stack.currentIndex()
+        if idx == 0 and not self._validate_welcome():
+            return
+        if idx == 1:
+            if not self._validate_disk():
+                return
+            self.opts_to_summary()
+        if idx == 2:
+            if not self._validate_users():
+                return
+        self.stack.setCurrentIndex(idx + 1)
+        if self.stack.currentIndex() == 3:
+            self._start_install()
+
+    def back(self):
+        idx = self.stack.currentIndex()
+        if idx > 0:
+            self.stack.setCurrentIndex(idx - 1)
+
+    def _validate_welcome(self):
+        return True
+
+    def _validate_disk(self):
+        if self.disk_combo.count() == 0:
+            self.disk_status.setText("No hay discos disponibles.")
+            return False
+        data = self.disk_combo.currentData()
+        if disk_mounted(os.path.basename(data)):
+            self.disk_status.setText(
+                "Este disco está en uso (es posible que sea el USB live). "
+                "Elegí otro.")
+            return False
+        self.disk_status.setText("")
+        return True
+
+    def _validate_users(self):
+        host = self.hostname.text().strip()
+        user = self.username.text().strip()
+        pw1 = self.passwd.text()
+        pw2 = self.passwd2.text()
+        rpw = self.root_passwd.text()
+        if not host or not user:
+            QtWidgets.QMessageBox.warning(self, "Faltan datos",
+                                          "Completá nombre de equipo y usuario.")
+            return False
+        if len(pw1) < 4:
+            QtWidgets.QMessageBox.warning(self, "Contraseña corta",
+                                          "Usá al menos 4 caracteres.")
+            return False
+        if pw1 != pw2:
+            QtWidgets.QMessageBox.warning(self, "Contraseñas distintas",
+                                          "Las contraseñas no coinciden.")
+            return False
+        if len(rpw) < 4:
+            QtWidgets.QMessageBox.warning(self, "Contraseña de root corta",
+                                          "Usá al menos 4 caracteres para root.")
+            return False
+        return True
+
+    def opts_to_summary(self):
+        disk = self.disk_combo.currentData()
+        swap = self.swap_size.value() if self.swap_chk.isChecked() else 0
+        txt = (
+            f"Disco:                 {disk}\n"
+            f"Swap:                  {swap} GiB\n" if swap else
+            f"Disco:                 {disk}\nSwap:                  no\n"
+        )
+        txt += (
+            f"Sistema:               {'UEFI' if is_uefi() else 'BIOS'}\n"
+            f"Fs raíz:               {self.fs_combo.currentText()}\n"
+            f"Hostname:              {self.hostname.text()}\n"
+            f"Usuario:               {self.username.text()}\n"
+            f"Teclado:               {self.kbd.currentText()}\n"
+            f"Zona horaria:          {self.tz.currentText()}\n"
+            f"Layout:                {self.layout_combo.currentData()}"
+        )
+        self.summary.setPlainText(txt)
+
+    def _start_install(self):
+        self._opts = {
+            "disk": self.disk_combo.currentData(),
+            "filesystem": self.fs_combo.currentText(),
+            "swap": self.swap_size.value() if self.swap_chk.isChecked() else 0,
+            "keyboard": self.kbd.currentText(),
+            "timezone": self.tz.currentText(),
+            "hostname": self.hostname.text().strip(),
+            "username": self.username.text().strip(),
+            "fullname": self.fullname.text().strip() or "UTN User",
+            "password": self.passwd.text(),
+            "root_password": self.root_passwd.text(),
+            "layout": self.layout_combo.currentData(),
+        }
+        self.btn_next.setEnabled(False)
+        self.btn_back.setEnabled(False)
+        self.log_view.clear()
+        self.bar.setValue(0)
+        self._worker = InstallWorker(self._opts)
+        self._worker.log.connect(self.log_view.appendPlainText)
+        self._worker.progress.connect(self.bar.setValue)
+        self._worker.done.connect(self._install_done)
+        self._worker.start()
+
+    def _install_done(self, ok, msg):
+        self.bar.setValue(100 if ok else self.bar.value())
+        if ok:
+            self.stack.setCurrentIndex(4)
+            self.finish_msg.setText(msg)
+        else:
+            QtWidgets.QMessageBox.critical(self, "Error de instalación",
+                                           f"{msg}\n\nRevisá el log.")
+            self.btn_next.setEnabled(True)
+            self.btn_back.setEnabled(True)
+
+
+def main():
+    if os.geteuid() != 0:
+        print("El instalador debe ejecutarse como root.", file=sys.stderr)
+        sys.exit(1)
+    app = QtWidgets.QApplication(sys.argv)
+    w = InstallerWindow()
+    w.showMaximized()
+    sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+    main()

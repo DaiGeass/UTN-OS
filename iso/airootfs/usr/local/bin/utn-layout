@@ -6,7 +6,7 @@ CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 BACKUP_DIR="$CONF_DIR/utn-os-backup"
 
 usage() {
-    echo "Uso: utn-layout <moderno|windows11>"
+    echo "Uso: utn-layout <moderno|windows8|windows11|macos>"
     echo "Cambia la apariencia del escritorio a un layout preconfigurado."
 }
 

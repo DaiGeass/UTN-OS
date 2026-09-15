@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=UTN OS Welcome
+Name[es]=Bienvenida UTN OS
+Comment=Selector de bienvenida (solo live)
+Comment[es]=Selector de bienvenida (solo live)
+Exec=/usr/local/bin/utn-welcome
+Icon=computer
+Terminal=false
+X-GNOME-Autostart-enabled=true
+NoDisplay=false

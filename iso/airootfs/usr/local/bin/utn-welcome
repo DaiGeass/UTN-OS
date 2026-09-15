@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+import os
+import subprocess
+import sys
+
+from PyQt5 import QtCore, QtWidgets
+
+LAYOUTS = ["macos", "windows8", "windows11", "moderno"]
+
+
+def is_live():
+    return os.path.isdir("/run/archiso/bootmnt")
+
+
+def run(cmd):
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+class WelcomeWindow(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("UTN OS - by DaiGeass/ZZERO")
+        self.setFixedSize(620, 460)
+
+        v = QtWidgets.QVBoxLayout(self)
+        v.setContentsMargins(48, 40, 48, 40)
+        v.setSpacing(14)
+
+        title = QtWidgets.QLabel("UTN OS")
+        title.setStyleSheet("font-size:40px; font-weight:bold; color:#5688f0;")
+        title.setAlignment(QtCore.Qt.AlignCenter)
+
+        sub = QtWidgets.QLabel("by DaiGeass/ZZERO")
+        sub.setStyleSheet("font-size:16px; color:#8aa2cc;")
+        sub.setAlignment(QtCore.Qt.AlignCenter)
+
+        info = QtWidgets.QLabel(
+            "Estás en el sistema live: nada de lo que hagas se guarda.\n"
+            "Elegí cómo continuar:"
+        )
+        info.setAlignment(QtCore.Qt.AlignCenter)
+
+        v.addWidget(title)
+        v.addWidget(sub)
+        v.addSpacing(6)
+        v.addWidget(info)
+        v.addSpacing(10)
+
+        self.btn_install = QtWidgets.QPushButton("Instalar UTN OS")
+        self.btn_install.setIcon(self.style().standardIcon(
+            QtWidgets.QStyle.SP_DriveHDIcon))
+        self.btn_explore = QtWidgets.QPushButton("Explorar el live")
+        self.btn_explore.setIcon(self.style().standardIcon(
+            QtWidgets.QStyle.SP_ComputerIcon))
+        self.btn_layout = QtWidgets.QPushButton("Cambiar layout")
+        self.btn_layout.clicked.connect(self.pick_layout)
+
+        for b in (self.btn_install, self.btn_explore, self.btn_layout):
+            b.setMinimumHeight(52)
+            b.setStyleSheet("text-align:left; padding-left:24px;")
+            v.addWidget(b)
+
+        v.addStretch(1)
+        self.btn_install.setDefault(True)
+        self.btn_install.clicked.connect(self.install_now)
+        self.btn_explore.clicked.connect(self.explore)
+
+    def install_now(self):
+        subprocess.Popen(
+            ["/usr/local/bin/utn-installer"],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, start_new_session=True)
+        QtCore.QTimer.singleShot(250, QtWidgets.QApplication.quit)
+
+    def explore(self):
+        QtWidgets.QApplication.quit()
+
+    def pick_layout(self):
+        ok, name = QtWidgets.QInputDialog.getItem(
+            self, "Layout", "Elegí el layout de escritorio:", LAYOUTS, 0, False)
+        if not ok:
+            return
+        res = run(["utn-layout", name])
+        if res.returncode == 0:
+            QtWidgets.QMessageBox.information(
+                self, "Layout",
+                f"Layout '{name}' aplicado.\n"
+                "Cerrá la sesión y volvé a entrar para verlo por completo "
+                "(menú → Salir → Cerrar sesión).")
+        else:
+            QtWidgets.QMessageBox.critical(
+                self, "Layout", res.stderr or "Error al aplicar el layout.")
+
+
+def main():
+    if not is_live():
+        sys.exit(0)
+    app = QtWidgets.QApplication(sys.argv)
+    w = WelcomeWindow()
+    w.show()
+    sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+    main()

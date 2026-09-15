@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Inicia picom con el picom.conf del layout activo.
+# Preferencia: ~/.config/picom.conf (layout aplicado por utn-layout)
+# luego /etc/xdg/picom.conf (default del build); por último fallback macos.
+set -euo pipefail
+
+pkill -x picom 2>/dev/null || true
+
+CONF=""
+for c in "$HOME/.config/picom.conf" /etc/xdg/picom.conf; do
+    if [ -f "$c" ]; then
+        CONF="$c"
+        break
+    fi
+done
+: "${CONF:=/usr/share/utn-os/layouts/macos/picom.conf}"
+
+exec picom --config "$CONF"

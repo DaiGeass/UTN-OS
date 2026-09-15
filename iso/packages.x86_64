@@ -138,3 +138,5 @@ pcmanfm-qt
 qterminal
 picom
 kvantum
+os-prober
+python-pyqt5

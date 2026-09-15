@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=UTN OS Compositor
+Name[es]=Compositor UTN OS
+Comment=Inicia picom con el layout activo
+Comment[es]=Inicia picom con el layout activo
+Exec=/usr/local/bin/utn-picom
+Terminal=false
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

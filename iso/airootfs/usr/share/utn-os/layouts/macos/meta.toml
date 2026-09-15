@@ -1,0 +1,6 @@
+name = "macos"
+display = "macOS"
+description = "Barra superior tipo menú de macOS, dock inferior centrado, esquinas redondeadas y translucidez."
+base = "lxqt"
+packages = ["picom"]
+default = true

@@ -3,4 +3,4 @@ display = "Moderno"
 description = "Default de UTN OS: panel inferior limpio, sin dock, maxima simplicidad."
 base = "lxqt"
 packages = []
-default = true
+default = false

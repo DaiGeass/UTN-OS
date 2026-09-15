@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=INSTALL UTNOS
+Name[es]=INSTALL UTNOS
+GenericName=System Installer
+GenericName[es]=Instalador de sistema
+Comment=Instala UTN OS en el disco duro
+Comment[es]=Instala UTN OS en el disco duro
+Exec=/usr/local/bin/utn-installer
+Icon=drive-harddisk
+Type=Application
+Categories=System;
+Terminal=false
+StartupNotify=true

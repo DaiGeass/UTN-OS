@@ -1,0 +1,6 @@
+name = "windows8"
+display = "Windows 8"
+description = "Estilo Metro/plano: ventanas cuadradas sin esquinas, taskbar inferior a la izquierda y fondo azul tipo bloom."
+base = "lxqt"
+packages = ["picom"]
+default = false
