@@ -1,0 +1,6 @@
+name = "chromeos"
+display = "ChromeOS"
+description = "Estilo Chrome OS: estante inferior centrado, fondo oscuro y minimalismo."
+base = "lxqt"
+packages = ["picom"]
+default = false

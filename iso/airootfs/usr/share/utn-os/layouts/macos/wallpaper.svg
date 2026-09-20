@@ -1,32 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#2a3d63"/>
-      <stop offset="0.45" stop-color="#5a5f92"/>
-      <stop offset="0.75" stop-color="#c96f8f"/>
-      <stop offset="1" stop-color="#f2a65a"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08140C"/>
+      <stop offset="0.3" stop-color="#10351C"/>
+      <stop offset="0.62" stop-color="#177A34"/>
+      <stop offset="0.85" stop-color="#1F8A9E"/>
+      <stop offset="1" stop-color="#2E6FD0"/>
     </linearGradient>
-    <radialGradient id="a" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#BFEAE4" stop-opacity="0.85"/>
+      <stop offset="0.4" stop-color="#7CD6C4" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#7CD6C4" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="b" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#4aa2d6" stop-opacity="0.45"/>
-      <stop offset="1" stop-color="#4aa2d6" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="c" cx="0.5" cy="0.25" r="0.7">
-      <stop offset="0" stop-color="#7b5fb0" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#7b5fb0" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="d" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#f7c873" stop-opacity="0.6"/>
-      <stop offset="1" stop-color="#f7c873" stop-opacity="0"/>
-    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#2E6FD0" stop-opacity="0"/>
+      <stop offset="0.55" stop-color="#74C69D" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#D4F6E6" stop-opacity="0"/>
+    </linearGradient>
   </defs>
-  <rect width="1920" height="1080" fill="url(#bg)"/>
-  <circle cx="430" cy="180" r="480" fill="url(#b)"/>
-  <circle cx="1500" cy="260" r="560" fill="url(#c)"/>
-  <circle cx="960" cy="-60" r="520" fill="url(#a)"/>
-  <circle cx="160" cy="940" r="420" fill="url(#d)"/>
-  <circle cx="1760" cy="980" r="380" fill="url(#d)"/>
+  <rect x="0" y="0" width="1920" height="1080" fill="url(#bg)"/>
+  <path d="M0 720 C 320 560, 640 620, 960 470 S 1620 430, 1920 300 L 1920 1080 L 0 1080 Z" fill="#000000" opacity="0.28"/>
+  <path d="M0 860 C 400 700, 780 800, 1120 640 S 1700 560, 1920 650 L 1920 1080 L 0 1080 Z" fill="#0B1F12" opacity="0.55"/>
+  <path d="M120 1060 C 480 880, 900 950, 1280 780 S 1750 720, 1920 790 L 1920 1080 L 0 1080 Z" fill="#06100A" opacity="0.6"/>
+  <ellipse cx="1500" cy="330" rx="560" ry="430" fill="url(#glow)"/>
+  <polygon points="0,760 380,600 900,660 1400,520 1920,600 1920,1080 0,1080" fill="url(#beam)"/>
+  <circle cx="1500" cy="330" r="150" fill="#EAF7F1" opacity="0.12"/>
 </svg>

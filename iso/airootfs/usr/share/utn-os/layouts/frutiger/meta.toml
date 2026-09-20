@@ -1,0 +1,6 @@
+name = "frutiger"
+display = "Frutiger Aero"
+description = "Burbujas, vidrio translúcido y acentos Y2K sobre un fondo aguamarina."
+base = "lxqt"
+packages = ["picom"]
+default = false

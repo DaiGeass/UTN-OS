@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Ventana de bienvenida / selector de modo del live de UTN OS."""
+import json
 import os
 import subprocess
 import sys
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
-LAYOUTS = ["macos", "windows8", "windows11", "moderno"]
+sys.path.insert(0, "/usr/share/utn-os")
+import utn_theme as UT
+
+KEYBOARDS = ["us", "latam", "es", "br", "fr", "de", "pt", "it", "uk"]
+
+LOGO = "/usr/share/pixmaps/utn-os.png"
 
 
 def is_live():
@@ -16,54 +24,157 @@ def run(cmd):
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
+def discover_layouts():
+    """Lista los layouts disponibles desde /usr/share/utn-os/layouts."""
+    try:
+        res = run(["/usr/local/bin/utn-layouts"])
+        if res.returncode == 0:
+            return json.loads(res.stdout or "[]")
+    except Exception:
+        pass
+    return []
+
+
 class WelcomeWindow(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, scale=1.0, mode="dark"):
         super().__init__()
+        self.scale = scale
+        self.mode = mode
         self.setWindowTitle("UTN OS - by DaiGeass/ZZERO")
-        self.setFixedSize(620, 460)
+        self.setWindowIcon(QtGui.QIcon(LOGO))
+        geo = QtWidgets.QApplication.primaryScreen().availableGeometry()
+        w = max(int(620 * scale), min(int(geo.width() * 0.5),
+                                      int(850 * scale)))
+        h = max(int(560 * scale), min(int(geo.height() * 0.7),
+                                      int(760 * scale)))
+        self.resize(w, h)
+        self.setMinimumSize(int(620 * scale), int(560 * scale))
 
         v = QtWidgets.QVBoxLayout(self)
-        v.setContentsMargins(48, 40, 48, 40)
-        v.setSpacing(14)
+        v.setContentsMargins(int(48 * scale), int(28 * scale),
+                             int(48 * scale), int(28 * scale))
+        v.setSpacing(int(12 * scale))
 
-        title = QtWidgets.QLabel("UTN OS")
-        title.setStyleSheet("font-size:40px; font-weight:bold; color:#5688f0;")
-        title.setAlignment(QtCore.Qt.AlignCenter)
+        self.title = QtWidgets.QLabel()
+        self.title.setAlignment(QtCore.Qt.AlignCenter)
+        self.sub = QtWidgets.QLabel("by DaiGeass/ZZERO")
+        self.sub.setAlignment(QtCore.Qt.AlignCenter)
 
-        sub = QtWidgets.QLabel("by DaiGeass/ZZERO")
-        sub.setStyleSheet("font-size:16px; color:#8aa2cc;")
-        sub.setAlignment(QtCore.Qt.AlignCenter)
+        v.addSpacing(8)
+        v.addWidget(self.title)
+        v.addWidget(self.sub)
+        v.addSpacing(4)
 
-        info = QtWidgets.QLabel(
-            "Estás en el sistema live: nada de lo que hagas se guarda.\n"
-            "Elegí cómo continuar:"
-        )
+        info = QtWidgets.QLabel("Estás en el sistema live. Elegí cómo empezar:")
         info.setAlignment(QtCore.Qt.AlignCenter)
-
-        v.addWidget(title)
-        v.addWidget(sub)
-        v.addSpacing(6)
         v.addWidget(info)
-        v.addSpacing(10)
+        v.addSpacing(8)
 
+        opts_row = QtWidgets.QHBoxLayout()
+        opts_row.addWidget(QtWidgets.QLabel("Teclado del live:"))
+        self.kbd = QtWidgets.QComboBox()
+        self.kbd.addItems(KEYBOARDS)
+        self.kbd.activated.connect(self._apply_keyboard)
+        opts_row.addWidget(self.kbd)
+        opts_row.addStretch(1)
+        self.btn_theme = QtWidgets.QPushButton("Tema")
+        self.btn_theme.setObjectName("toggle")
+        self.btn_theme.setMinimumHeight(int(32 * scale))
+        self.btn_theme.clicked.connect(self._toggle_theme)
+        opts_row.addWidget(self.btn_theme)
+        v.addLayout(opts_row)
+
+        v.addSpacing(6)
+        self.btn_try = QtWidgets.QPushButton("Probar UTN OS  (modo live)")
+        self.btn_try.setObjectName("accent")
         self.btn_install = QtWidgets.QPushButton("Instalar UTN OS")
-        self.btn_install.setIcon(self.style().standardIcon(
-            QtWidgets.QStyle.SP_DriveHDIcon))
-        self.btn_explore = QtWidgets.QPushButton("Explorar el live")
-        self.btn_explore.setIcon(self.style().standardIcon(
-            QtWidgets.QStyle.SP_ComputerIcon))
         self.btn_layout = QtWidgets.QPushButton("Cambiar layout")
-        self.btn_layout.clicked.connect(self.pick_layout)
 
-        for b in (self.btn_install, self.btn_explore, self.btn_layout):
-            b.setMinimumHeight(52)
-            b.setStyleSheet("text-align:left; padding-left:24px;")
+        for b in (self.btn_try, self.btn_install, self.btn_layout):
+            b.setMinimumHeight(int(56 * scale))
             v.addWidget(b)
 
+        tip = QtWidgets.QLabel(
+            "Nada de lo que hagas acá se guarda. Elegí 'Probar' para entrar "
+            "al escritorio con el layout que quieras: la bienvenida queda "
+            "abierta, así volvés a 'Instalar' cuando quieras.\nTambién hay "
+            "accesos directos en el escritorio y en el menú.")
+        tip.setObjectName("muted")
+        tip.setStyleSheet(f"color:{UT.PALETTES[self.mode]['muted']}; "
+                          f"font-size:{12 * self.scale:.0f}px;")
+        tip.setAlignment(QtCore.Qt.AlignCenter)
+        v.addWidget(tip)
+
         v.addStretch(1)
-        self.btn_install.setDefault(True)
+
+        actions = QtWidgets.QHBoxLayout()
+        btn_term = QtWidgets.QPushButton("Terminal")
+        btn_term.setMinimumHeight(int(40 * scale))
+        btn_term.clicked.connect(self._open_terminal)
+        btn_exit = QtWidgets.QPushButton("Salir al escritorio")
+        btn_exit.setMinimumHeight(int(40 * scale))
+        btn_exit.clicked.connect(QtWidgets.QApplication.quit)
+        btn_restart = QtWidgets.QPushButton("Reiniciar")
+        btn_restart.setMinimumHeight(int(40 * scale))
+        btn_restart.clicked.connect(self._reboot)
+        btn_off = QtWidgets.QPushButton("Apagar")
+        btn_off.setObjectName("danger")
+        btn_off.setMinimumHeight(int(40 * scale))
+        btn_off.clicked.connect(self._poweroff)
+        actions.addWidget(btn_term)
+        actions.addWidget(btn_exit)
+        actions.addStretch(1)
+        actions.addWidget(btn_restart)
+        actions.addWidget(btn_off)
+        v.addLayout(actions)
+
+        self.btn_try.setDefault(True)
+        self.btn_try.clicked.connect(self.try_live)
         self.btn_install.clicked.connect(self.install_now)
-        self.btn_explore.clicked.connect(self.explore)
+        self.btn_layout.clicked.connect(self.pick_layout)
+        self._apply_theme()
+
+    # ---------------------------------------------------------------- theme
+    def _apply_theme(self):
+        P = UT.PALETTES[self.mode]
+        self.title.setText(
+            f"<span style='color:{P['accent']}'>UTN</span> "
+            f"<span style='color:{P['blue']}'>OS</span>")
+        self.title.setStyleSheet(
+            f"font-size:{50 * self.scale:.0f}px; font-weight:bold;")
+        self.sub.setStyleSheet(
+            f"font-size:{17 * self.scale:.0f}px; color:{P['muted']};")
+        self.btn_theme.setText(
+            "Tema claro" if self.mode == "dark" else "Tema oscuro")
+
+    def _toggle_theme(self):
+        self.mode = "light" if self.mode == "dark" else "dark"
+        UT.save_theme(self.mode)
+        QtWidgets.QApplication.instance().setStyleSheet(
+            UT.stylesheet(self.mode, self.scale))
+        self._apply_theme()
+
+    # ----------------------------------------------------------- acciones
+    def _apply_keyboard(self, _idx=None):
+        run(["setxkbmap", self.kbd.currentText()])
+
+    def _open_terminal(self):
+        subprocess.Popen(["qterminal"], stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+        QtCore.QTimer.singleShot(250, QtWidgets.QApplication.quit)
+
+    def _reboot(self):
+        if QtWidgets.QMessageBox.question(
+                self, "Reiniciar", "¿Reiniciar el equipo ahora?") \
+                == QtWidgets.QMessageBox.Yes:
+            os.system("systemctl reboot")
+
+    def _poweroff(self):
+        if QtWidgets.QMessageBox.question(
+                self, "Apagar", "¿Apagar el equipo ahora?") \
+                == QtWidgets.QMessageBox.Yes:
+            os.system("systemctl poweroff")
 
     def install_now(self):
         subprocess.Popen(
@@ -72,21 +183,57 @@ class WelcomeWindow(QtWidgets.QWidget):
             stderr=subprocess.DEVNULL, start_new_session=True)
         QtCore.QTimer.singleShot(250, QtWidgets.QApplication.quit)
 
-    def explore(self):
-        QtWidgets.QApplication.quit()
+    def try_live(self):
+        """Entra al escritorio del live; elegís el layout y queda la ventana."""
+        layouts = discover_layouts()
+        if layouts:
+            items = [
+                f"{d['display']}  —  {d['description']}" for d in layouts]
+            ok, sel = QtWidgets.QInputDialog.getItem(
+                self, "Modo live",
+                "¿Con qué layout querés probar?\n"
+                "(Cancelar = dejar el layout actual)",
+                items, 0, False)
+            if ok:
+                code = layouts[sel]["id"]
+                res = run(["utn-layout", code])
+                if res.returncode == 0:
+                    QtWidgets.QMessageBox.information(
+                        self, "Layout aplicado",
+                        f"Estás usando '{layouts[sel]['display']}'. Podés "
+                        "seguir probando o pulsar 'Instalar UTN OS' cuando "
+                        "quieras.")
+                else:
+                    QtWidgets.QMessageBox.critical(
+                        self, "Layout",
+                        res.stderr or "Error al aplicar el layout.")
+        else:
+            QtWidgets.QMessageBox.information(
+                self, "Modo live",
+                "Podés entrar al escritorio y jugar con las apps. La "
+                "bienvenida queda abierta si querés instalar después.")
 
     def pick_layout(self):
-        ok, name = QtWidgets.QInputDialog.getItem(
-            self, "Layout", "Elegí el layout de escritorio:", LAYOUTS, 0, False)
+        layouts = discover_layouts()
+        if not layouts:
+            QtWidgets.QMessageBox.warning(
+                self, "Layout", "No se encontraron layouts instalados.")
+            return
+        items = [
+            f"{d['display']}  —  {d['description']}" for d in layouts]
+        ok, sel = QtWidgets.QInputDialog.getItem(
+            self, "Layout",
+            "Elegí el layout de escritorio (se aplica al instante):",
+            items, 0, False)
         if not ok:
             return
-        res = run(["utn-layout", name])
+        code = layouts[sel]["id"]
+        res = run(["utn-layout", code])
         if res.returncode == 0:
             QtWidgets.QMessageBox.information(
                 self, "Layout",
-                f"Layout '{name}' aplicado.\n"
-                "Cerrá la sesión y volvé a entrar para verlo por completo "
-                "(menú → Salir → Cerrar sesión).")
+                f"Layout '{layouts[sel]['display']}' aplicado. Seguí usando "
+                "esta ventana o instalá cuando quieras.")
         else:
             QtWidgets.QMessageBox.critical(
                 self, "Layout", res.stderr or "Error al aplicar el layout.")
@@ -96,7 +243,14 @@ def main():
     if not is_live():
         sys.exit(0)
     app = QtWidgets.QApplication(sys.argv)
-    w = WelcomeWindow()
+    app.setWindowIcon(QtGui.QIcon(LOGO))
+    scale = UT.ui_scale()
+    font = app.font()
+    font.setPointSizeF(14 * scale)
+    app.setFont(font)
+    mode = UT.current_theme()
+    app.setStyleSheet(UT.stylesheet(mode, scale))
+    w = WelcomeWindow(scale, mode)
     w.show()
     sys.exit(app.exec_())
 

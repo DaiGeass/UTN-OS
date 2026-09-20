@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fd6e8"/>
+      <stop offset="0.5" stop-color="#b5e8ef"/>
+      <stop offset="1" stop-color="#d9f6f5"/>
+    </linearGradient>
+    <linearGradient id="ray" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="bubble" cx="0.35" cy="0.3" r="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="0.25" stop-color="#eafcff" stop-opacity="0.55"/>
+      <stop offset="0.6" stop-color="#bde8f2" stop-opacity="0.25"/>
+      <stop offset="0.85" stop-color="#7bc4d8" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#5aa9c4" stop-opacity="0.75"/>
+    </radialGradient>
+    <radialGradient id="sphere" cx="0.32" cy="0.28" r="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="0.3" stop-color="#c9f4f7" stop-opacity="0.7"/>
+      <stop offset="0.65" stop-color="#6fc6d9" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#3b93ad" stop-opacity="1"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="22"/></filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+
+  <g opacity="0.6">
+    <polygon points="240,0 760,0 480,1080 120,1080" fill="url(#ray)"/>
+    <polygon points="980,0 1180,0 1240,1080 940,1080" fill="url(#ray)" opacity="0.7"/>
+    <polygon points="1560,0 1720,0 1500,1080 1400,1080" fill="url(#ray)" opacity="0.5"/>
+  </g>
+
+  <ellipse cx="600" cy="360" rx="520" ry="300" fill="#ffffff" opacity="0.14" filter="url(#glow)"/>
+
+  <g>
+    <circle cx="300" cy="300" r="70" fill="url(#bubble)"/>
+    <circle cx="420" cy="200" r="34" fill="url(#bubble)"/>
+    <circle cx="520" cy="330" r="52" fill="url(#bubble)"/>
+    <circle cx="660" cy="240" r="26" fill="url(#bubble)"/>
+    <circle cx="760" cy="360" r="60" fill="url(#bubble)"/>
+    <circle cx="900" cy="280" r="40" fill="url(#bubble)"/>
+    <circle cx="1050" cy="350" r="64" fill="url(#bubble)"/>
+    <circle cx="1180" cy="250" r="30" fill="url(#bubble)"/>
+    <circle cx="1320" cy="330" r="48" fill="url(#bubble)"/>
+    <circle cx="1450" cy="240" r="36" fill="url(#bubble)"/>
+    <circle cx="1600" cy="310" r="58" fill="url(#bubble)"/>
+  </g>
+
+  <g>
+    <circle cx="120" cy="760" r="90" fill="url(#sphere)"/>
+    <circle cx="1800" cy="700" r="130" fill="url(#sphere)"/>
+    <circle cx="1750" cy="520" r="20" fill="url(#bubble)"/>
+    <circle cx="1700" cy="820" r="28" fill="url(#bubble)"/>
+    <circle cx="1820" cy="760" r="16" fill="url(#bubble)"/>
+  </g>
+
+  <path d="M0,920 Q480,860 960,930 T1920,915 V1080 H0 Z" fill="#ffffff" opacity="0.5"/>
+  <path d="M0,1000 Q640,950 1280,1010 T1920,995 V1080 H0 Z" fill="#b9ecf0" opacity="0.55"/>
+
+  <g>
+    <circle cx="200" cy="960" r="14" fill="url(#bubble)"/>
+    <circle cx="340" cy="1000" r="22" fill="url(#bubble)"/>
+    <circle cx="500" cy="950" r="10" fill="url(#bubble)"/>
+    <circle cx="820" cy="1000" r="18" fill="url(#bubble)"/>
+    <circle cx="1150" cy="960" r="12" fill="url(#bubble)"/>
+    <circle cx="1400" cy="1005" r="20" fill="url(#bubble)"/>
+    <circle cx="1620" cy="950" r="9" fill="url(#bubble)"/>
+  </g>
+</svg>

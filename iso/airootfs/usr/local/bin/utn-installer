@@ -8,16 +8,22 @@ Corre como root en el live y copia el sistema live al disco de destino.
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import time
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+sys.path.insert(0, "/usr/share/utn-os")
+import utn_theme as UT
+
+LOGO = "/usr/share/pixmaps/utn-os.png"
 
 MOUNT = "/mnt/utnroot"
 LIVE_SFS = "/run/archiso/bootmnt/arch/x86_64/airootfs.sfs"
 
-LAYOUTS = ["macos", "windows8", "windows11", "moderno"]
+LAYOUT_DIR = "/usr/share/utn-os/layouts"
 TIMEZONES = [
     "America/Argentina/Buenos_Aires",
     "America/Mexico_City",
@@ -30,7 +36,21 @@ TIMEZONES = [
     "Europe/Madrid",
 ]
 KEYBOARDS = ["es", "latam", "us", "br", "fr", "de", "pt", "it", "uk"]
+LOCALES = ["es_MX.UTF-8", "es_AR.UTF-8", "es_ES.UTF-8", "en_US.UTF-8",
+           "pt_BR.UTF-8", "fr_FR.UTF-8", "de_DE.UTF-8", "it_IT.UTF-8"]
+CONSOLE_KEYMAP = {
+    "es": "es", "latam": "us", "us": "us", "br": "br-abnt2", "fr": "fr",
+    "de": "de", "pt": "pt-latin1", "it": "it", "uk": "uk",
+}
 FILESYSTEMS = ["ext4", "btrfs", "xfs", "jfs", "f2fs"]
+def ui_stylesheet(scale=1.0):
+    """Hoja de estilos compartida (verde+azul, claro/oscuro)."""
+    return UT.stylesheet(UT.current_theme(), scale)
+
+
+def ui_scale():
+    """Factor de escala para pantallas grandes (p.ej. 4K o ultrawide)."""
+    return UT.ui_scale()
 
 
 def run(cmd, check=True, timeout=900):
@@ -49,6 +69,21 @@ def run(cmd, check=True, timeout=900):
 
 def is_uefi():
     return os.path.isdir("/sys/firmware/efi")
+
+
+def discover_layouts():
+    """Lista los layouts disponibles desde /usr/share/utn-os/layouts (meta.toml)."""
+    try:
+        out = run(["utn-layouts"], check=False)
+        data = json.loads(out)
+        if isinstance(data, list):
+            return data
+    except (json.JSONDecodeError, OSError):
+        pass
+    if os.path.isdir(LAYOUT_DIR):
+        return [{"id": d, "display": d, "description": "", "default": False}
+                for d in sorted(os.listdir(LAYOUT_DIR))]
+    return []
 
 
 def disks():
@@ -192,16 +227,37 @@ class InstallWorker(QtCore.QThread):
             self._log(f"  EFI  {efi}  (vfat)")
         else:
             root = parts[0]
-        if root:
-            mkfs = {
-                "ext4": ["mkfs.ext4", "-F", "-L", "UTNROOT", root],
-                "btrfs": ["mkfs.btrfs", "-f", "-L", "UTNROOT", root],
-                "xfs": ["mkfs.xfs", "-f", "-L", "UTNROOT", root],
-                "jfs": ["mkfs.jfs", "-q", "-L", "UTNROOT", root],
-                "f2fs": ["mkfs.f2fs", "-f", "-l", "UTNROOT", root],
-            }[fs]
-            self._log(f"  ROOT {root}  ({fs})")
-            run(mkfs)
+        # Cifrado LUKS opcional: formateamos la partición y abrimos el mapper
+        encrypt = self.opts.get("encrypt")
+        if encrypt:
+            keyfile = "/tmp/utn-luks.key"
+            with open(keyfile, "w") as fh:
+                fh.write(self.opts.get("luks_passphrase", ""))
+            os.chmod(keyfile, 0o600)
+            luks_uuid = None
+            run(["cryptsetup", "-q", "--type=luks2", "luksFormat",
+                 "--key-file", keyfile, root])
+            try:
+                out = run(["blkid", "-s", "UUID", "-o", "value", root],
+                          check=False).strip()
+                luks_uuid = out.splitlines()[0] if out else None
+            except Exception:
+                luks_uuid = None
+            run(["cryptsetup", "open", "--key-file", keyfile, root, "utnroot"])
+            os.remove(keyfile)
+            self.opts["luks_uuid"] = luks_uuid
+            self._log(f"  LUKS  {root}  -> /dev/mapper/utnroot")
+            root = "/dev/mapper/utnroot"
+        self.opts["root_dev"] = root
+        mkfs = {
+            "ext4": ["mkfs.ext4", "-F", "-L", "UTNROOT", root],
+            "btrfs": ["mkfs.btrfs", "-f", "-L", "UTNROOT", root],
+            "xfs": ["mkfs.xfs", "-f", "-L", "UTNROOT", root],
+            "jfs": ["mkfs.jfs", "-q", "-L", "UTNROOT", root],
+            "f2fs": ["mkfs.f2fs", "-f", "-l", "UTNROOT", root],
+        }[fs]
+        self._log(f"  ROOT {root}  ({fs})")
+        run(mkfs)
         if swap:
             run(["mkswap", "-L", "swap", parts[-1]])
             self._log(f"  SWAP {parts[-1]}")
@@ -209,10 +265,11 @@ class InstallWorker(QtCore.QThread):
     def _mount(self, disk):
         parts = self.opts["parts"]
         os.makedirs(MOUNT, exist_ok=True)
+        root = self.opts["root_dev"]
         if is_uefi():
-            root, efi = parts[1], parts[0]
+            efi = parts[0]
         else:
-            root, efi = parts[0], None
+            efi = None
         run(["mount", root, MOUNT])
         if efi:
             os.makedirs(f"{MOUNT}/boot/efi", exist_ok=True)
@@ -268,6 +325,61 @@ class InstallWorker(QtCore.QThread):
 
     def _configure(self, disk):
         opt = self.opts
+        q = lambda s: shlex.quote(str(s))
+        locale = opt["locale"]
+        console = CONSOLE_KEYMAP.get(opt["keyboard"], "us")
+        encrypt = opt.get("encrypt")
+        firewall = opt.get("firewall")
+        octopi = opt.get("octopi")
+        plymouth = opt.get("plymouth")
+        snapper = opt.get("snapper")
+        updates = opt.get("updates")
+
+        # HOOKS de mkinitcpio según opciones elegidas
+        hooks = ["base", "udev", "autodetect", "microcode", "modconf", "kms",
+                 "keyboard", "keymap", "consolefont", "block"]
+        if plymouth:
+            hooks.append("plymouth")
+        if encrypt:
+            hooks.append("encrypt")
+        hooks += ["filesystems", "fsck"]
+        HOOKS = " ".join(hooks)
+
+        extras = []
+        if firewall:
+            extras.append("""# firewall (nftables)
+cat > /etc/nftables.conf <<'NFT'
+table inet filter {
+  chain input { type filter hook input priority filter; policy drop;
+    ct state established,related accept
+    iif "lo" accept
+    ip protocol icmp limit rate 5/second burst 10 packets accept
+  }
+  chain forward { type filter hook forward priority filter; policy drop; }
+  chain output { type filter hook output priority filter; policy accept; }
+}
+NFT
+systemctl enable nftables
+echo '  Firewall nftables activado'""")
+        if octopi:
+            extras.append("""echo '  Instalando gestor de paquetes (octopi)...'
+pacman -S --noconfirm octopi >/dev/null 2>&1 && echo '    octopi instalado' || echo '    octopi no disponible (sin internet?)'
+systemctl --force --now enable reflector.timer >/dev/null 2>&1 || true""")
+        if plymouth:
+            extras.append("""echo '  Instalando pantalla de arranque (plymouth)...'
+pacman -S --noconfirm plymouth >/dev/null 2>&1 && {
+  sed -i 's/^#*Theme=.*/Theme=solar/' /etc/plymouth/plymouthd.conf 2>/dev/null || true
+  echo '    plymouth instalado'
+} || echo '    plymouth no disponible (sin internet?)'""")
+        if snapper:
+            extras.append("""echo '  Configurando snapshots btrfs (snapper)...'
+pacman -S --noconfirm snapper >/dev/null 2>&1 && {
+  snapper -c root create-config / >/dev/null 2>&1 || true
+  systemctl enable snapper-timeline.timer snapper-cleanup.timer >/dev/null 2>&1 || true
+  echo '    snapper activo'
+} || echo '    snapper no disponible (sin internet?)'""")
+        EXTRA_BLOCK = "\n".join(extras)
+
         script = f"""#!/bin/bash
 set -e
 echo '== Configurando sistema =='
@@ -276,16 +388,17 @@ echo '== Configurando sistema =='
 ln -sf /usr/share/zoneinfo/{opt['timezone']} /etc/localtime
 
 # hostname
-echo '{opt['hostname']}' > /etc/hostname
+printf '%s\\n' {q(opt['hostname'])} > /etc/hostname
 
-# locale es_MX
-sed -i 's/^#es_MX.UTF-8/es_MX.UTF-8/' /etc/locale.gen
-grep -q '^es_MX.UTF-8' /etc/locale.gen || echo 'es_MX.UTF-8 UTF-8' >> /etc/locale.gen
+# locale
+grep -q '^{locale} UTF-8' /etc/locale.gen \\
+    && sed -i 's/^#\\?{locale} UTF-8/{locale} UTF-8/' /etc/locale.gen \\
+    || echo '{locale} UTF-8' >> /etc/locale.gen
 locale-gen >/dev/null 2>&1 || true
-echo 'LANG=es_MX.UTF-8' > /etc/locale.conf
+printf 'LANG={locale}\\n' > /etc/locale.conf
 
-# teclado
-echo 'KEYMAP={opt['keyboard']}' > /etc/vconsole.conf
+# teclado (consola + X11)
+printf 'KEYMAP={console}\\n' > /etc/vconsole.conf
 mkdir -p /etc/X11/xorg.conf.d
 cat > /etc/X11/xorg.conf.d/00-keyboard.conf <<XEOF
 Section "InputClass"
@@ -295,13 +408,16 @@ Section "InputClass"
 EndSection
 XEOF
 
-# usuarios
-useradd -m -G wheel,users,audio,video,storage,lp,network,power -s /bin/bash {opt['username']} 2>/dev/null || true
-echo '{opt['username']}:{opt['password']}' | chpasswd
-echo 'root:{opt['root_password']}' | chpasswd
+# usuarios (passwords provienen de /tmp/chpasswd.in, sin exponer en el log)
+if ! id -u {q(opt['username'])} >/dev/null 2>&1; then
+    useradd -m -G wheel,users,audio,video,storage,lp,network,power \\
+        -s /bin/bash -c {q(opt['fullname'])} {q(opt['username'])}
+fi
+chpasswd < /tmp/chpasswd.in
+rm -f /tmp/chpasswd.in
 mkdir -p /etc/sudoers.d
-echo '{opt['username']} ALL=(ALL) ALL' > /etc/sudoers.d/10-{opt['username']}
-chmod 440 /etc/sudoers.d/10-{opt['username']}
+printf '%s ALL=(ALL) ALL\\n' {q(opt['username'])} > "/etc/sudoers.d/10-{opt['username']}"
+chmod 440 "/etc/sudoers.d/10-{opt['username']}"
 
 # autologin + sesión LXQt
 mkdir -p /etc/sddm.conf.d
@@ -311,19 +427,28 @@ User={opt['username']}
 Session=lxqt
 XEOF
 
-# layout de escritorio elegido (default de /etc/xdg)
+# layout de escritorio elegido como default de /etc/xdg
 LAYOUT=/usr/share/utn-os/layouts/{opt['layout']}
 for f in panel.conf lxqt.conf; do
     install -Dm644 "$LAYOUT/lxqt/$f" "/etc/xdg/lxqt/$f"
 done
 install -Dm644 "$LAYOUT/openbox/rc.xml" /etc/xdg/openbox/rc.xml
 install -Dm644 "$LAYOUT/pcmanfm/settings.conf" /etc/xdg/pcmanfm/lxqt/settings.conf
+if [ -f "$LAYOUT/picom.conf" ]; then
+    install -Dm644 "$LAYOUT/picom.conf" /etc/xdg/picom.conf
+fi
+
+# ====== extras opcionales elegidos en la instalación ======
+{EXTRA_BLOCK}
 
 # limpiar config live y regenerar initramfs estándar
 rm -rf /etc/mkinitcpio.conf.d /etc/mkinitcpio.d
 rm -rf /etc/systemd/system/getty@tty1.service.d
 rm -f /root/.ssh/authorized_keys
 rm -f /etc/ssh/sshd_config.d/99-utn-debug.conf
+sed -i 's/^HOOKS=(.*)/HOOKS=({HOOKS})/' /etc/mkinitcpio.conf
+sed -i 's/^#COMPRESSION=.*/COMPRESSION="zstd"/' /etc/mkinitcpio.conf
+sed -i 's/^#MODULES=.*/MODULES=()/' /etc/mkinitcpio.conf
 mkdir -p /etc/mkinitcpio.d
 cat > /etc/mkinitcpio.d/linux.preset <<XEOF
 PRESETS=('default' 'fallback')
@@ -338,15 +463,28 @@ mkinitcpio -P >/dev/null 2>&1 || true
 
 # servicios
 systemctl enable NetworkManager sddm >/dev/null 2>&1 || true
+{"systemctl enable plymouth-start plymouth-quit plymouth-quit-wait >/dev/null 2>&1 || true" if plymouth else ""}
+{"systemctl enable nftables >/dev/null 2>&1 || true" if firewall else ""}
+{"systemctl enable snapper-timeline.timer snapper-cleanup.timer >/dev/null 2>&1 || true" if snapper else ""}
+{"echo 'Descargando e instalando actualizaciones (puede tardar)...' && pacman -Syu --noconfirm >/dev/null 2>&1 && mkinitcpio -P >/dev/null 2>&1 || true" if updates else ""}
 
-# fstab
-genfstab -U / > /etc/fstab
-
+# fstab ya fue generado desde el host (genfstab -U)
 echo '== Fin de configuración =='
 """
+        with open(f"{MOUNT}/tmp/chpasswd.in", "w") as fh:
+            fh.write(f"{opt['username']}:{opt['password']}\n")
+            fh.write(f"root:{opt['root_password']}\n")
+        os.chmod(f"{MOUNT}/tmp/chpasswd.in", 0o600)
+
+        # crypttab para arranque con disco cifrado (LUKS)
+        if encrypt and opt.get("luks_uuid"):
+            with open(f"{MOUNT}/etc/crypttab", "w") as fh:
+                fh.write(f"utnroot UUID={opt['luks_uuid']} none luks\n")
+            self._log(f"  Crypttab: utnroot UUID={opt['luks_uuid']}")
+
         with open(f"{MOUNT}/tmp/setup.sh", "w") as fh:
             fh.write(script)
-        os.chmod(f"{MOUNT}/tmp/setup.sh", 0o755)
+        os.chmod(f"{MOUNT}/tmp/setup.sh", 0o700)
 
         # genfstab se corre desde el host (en root del target)
         fstab = subprocess.run(
@@ -357,17 +495,31 @@ echo '== Fin de configuración =='
         self._log("  Fstab generado: " + " | ".join(fstab.splitlines()[:4]))
 
         run(["arch-chroot", MOUNT, "/bin/bash", "/tmp/setup.sh"])
-        run(["rm", "-f", f"{MOUNT}/tmp/setup.sh"])
+        run(["rm", "-f", f"{MOUNT}/tmp/setup.sh", f"{MOUNT}/tmp/chpasswd.in"])
         self._log("  Configuración aplicada")
-        self._log(f"  Usuario: {opt['username']}")
+        self._log(f"  Usuario: {opt['username']}  |  Locale: {opt['locale']}")
+        self._log(f"  Teclado consola: {console}  |  X11: {opt['keyboard']}")
+        self._log("  Extras: " + ", ".join(
+            k for k in ("encrypt", "firewall", "octopi", "plymouth",
+                        "snapper", "updates") if opt.get(k)) or "ninguno")
 
     def _grub(self, disk):
         boot_id = "UTN_OS"
+        opt = self.opts
+        if opt.get("encrypt") and opt.get("luks_uuid"):
+            crypt_device = (f'GRUB_CMDLINE_LINUX='
+                            f'"cryptdevice=UUID={opt["luks_uuid"]}:utnroot"')
+            cryptodisk = 'GRUB_ENABLE_CRYPTODISK=y'
+        else:
+            crypt_device = 'GRUB_CMDLINE_LINUX=""'
+            cryptodisk = '#GRUB_ENABLE_CRYPTODISK'
         run(["arch-chroot", MOUNT, "/bin/bash", "-c",
              "printf '%s\\n' "
              "'GRUB_DEFAULT=0' "
              "'GRUB_TIMEOUT=5' "
              "'GRUB_DISTRIBUTOR=\"UTN OS\"' "
+             f"'{crypt_device}' "
+             f"'{cryptodisk}' "
              "'GRUB_BACKGROUND=/boot/grub/utn-splash.png' "
              "'GRUB_GFXMODE=1024x768,800x600,auto' "
              "'GRUB_DISABLE_OS_PROBER=false' "
@@ -385,16 +537,19 @@ echo '== Fin de configuración =='
         run(["arch-chroot", MOUNT, "grub-mkconfig", "-o",
              "/boot/grub/grub.cfg"])
         run(["umount", "-R", MOUNT])
+        if opt.get("encrypt"):
+            run(["cryptsetup", "-q", "close", "utnroot"], check=False)
         self._log("  GRUB instalado")
 
 
 class InstallerWindow(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, scale=1.0):
         super().__init__()
+        self.scale = scale
         self._worker = None
         self._opts = {}
         self.setWindowTitle("INSTALL UTNOS by DaiGeass/ZZERO")
-        self.setMinimumSize(760, 560)
+        self.setMinimumSize(int(760 * scale), int(560 * scale))
         self.layout = QtWidgets.QVBoxLayout(self)
 
         self.stack = QtWidgets.QStackedWidget(self)
@@ -403,6 +558,7 @@ class InstallerWindow(QtWidgets.QWidget):
         self._build_welcome()
         self._build_disk()
         self._build_users()
+        self._build_extras()
         self._build_summary()
         self._build_install()
         self._build_finish()
@@ -429,13 +585,16 @@ class InstallerWindow(QtWidgets.QWidget):
         page = QtWidgets.QWidget()
         v = QtWidgets.QVBoxLayout(page)
         title = QtWidgets.QLabel(
-            "INSTALL UTNOS\nby DaiGeass/ZZERO")
-        title.setStyleSheet("font-size:26px; font-weight:bold;")
+            "<span style='color:#1C9E3F'>INSTALL</span> <span style='color:"
+            "#2E6FD0'>UTN OS</span>\nby DaiGeass/ZZERO")
+        title.setStyleSheet(
+            f"font-size:{29 * self.scale:.0f}px; font-weight:bold;")
+        title.setAlignment(QtCore.Qt.AlignCenter)
         v.addWidget(title)
         v.addWidget(QtWidgets.QLabel(
-            "Bienvenido. El sistema se copiará tal cual vive en el medio, "
-            "con el escritorio LXQt y los layouts disponibles.\n\n"
-            "Seleccioná la distribución de teclado para el sistema instalado:"))
+            "Bienvenido. Elegí la distribución de teclado, zona horaria e "
+            "idioma del sistema instalado.\nEl layout del escritorio se "
+            "elige en el paso de usuario."))
 
         self.kbd = QtWidgets.QComboBox()
         self.kbd.addItems(KEYBOARDS)
@@ -444,6 +603,11 @@ class InstallerWindow(QtWidgets.QWidget):
         self.tz = QtWidgets.QComboBox()
         self.tz.addItems(TIMEZONES)
         v.addWidget(self.tz)
+        v.addWidget(QtWidgets.QLabel("Idioma del sistema (locale):"))
+        self.locale = QtWidgets.QComboBox()
+        self.locale.addItems(LOCALES)
+        self.locale.setCurrentIndex(0)
+        v.addWidget(self.locale)
         v.addStretch(1)
         warn = QtWidgets.QLabel(
             "ATENCIÓN: la instalación BORRA TODO el disco elegido.")
@@ -455,7 +619,8 @@ class InstallerWindow(QtWidgets.QWidget):
         page = QtWidgets.QWidget()
         v = QtWidgets.QVBoxLayout(page)
         title = QtWidgets.QLabel("Selección de disco")
-        title.setStyleSheet("font-size:18px; font-weight:bold;")
+        title.setStyleSheet(
+            f"font-size:{20 * self.scale:.0f}px; font-weight:bold;")
         v.addWidget(title)
         self.disk_combo = QtWidgets.QComboBox()
         v.addWidget(self.disk_combo)
@@ -494,7 +659,8 @@ class InstallerWindow(QtWidgets.QWidget):
         page = QtWidgets.QWidget()
         form = QtWidgets.QFormLayout(page)
         title = QtWidgets.QLabel("Datos de usuario")
-        title.setStyleSheet("font-size:18px; font-weight:bold;")
+        title.setStyleSheet(
+            f"font-size:{20 * self.scale:.0f}px; font-weight:bold;")
         form.addRow(title)
 
         self.hostname = QtWidgets.QLineEdit("utn-pc")
@@ -515,20 +681,124 @@ class InstallerWindow(QtWidgets.QWidget):
 
         form.addRow(QtWidgets.QLabel(""))
         form.addRow(QtWidgets.QLabel("Apariencia del escritorio instalado:"))
+
+        layout_row = QtWidgets.QHBoxLayout()
         self.layout_combo = QtWidgets.QComboBox()
-        codes = {"macos": "macOS", "windows8": "Windows 8",
-                 "windows11": "Windows 11", "moderno": "Moderno"}
-        for code, name in codes.items():
-            self.layout_combo.addItem(name, code)
-        self.layout_combo.setCurrentIndex(0)
-        form.addRow("Layout:", self.layout_combo)
+        self.layout_combo.setMinimumWidth(int(360 * self.scale))
+        self._layouts = discover_layouts()
+        for i, d in enumerate(self._layouts):
+            self.layout_combo.addItem(f"{d['display']}  —  {d['description']}",
+                                      d["id"])
+            self.layout_combo.setItemData(
+                i, d["description"], QtCore.Qt.ToolTipRole)
+            if d["default"]:
+                self.layout_combo.setCurrentIndex(i)
+        self.layout_combo.currentIndexChanged.connect(
+            self._set_layout_preview)
+        layout_row.addWidget(self.layout_combo, 1)
+
+        self.layout_preview = QtWidgets.QLabel()
+        self.layout_preview.setFixedSize(int(240 * self.scale),
+                                         int(135 * self.scale))
+        self.layout_preview.setAlignment(QtCore.Qt.AlignCenter)
+        self.layout_preview.setFrameShape(QtWidgets.QFrame.Box)
+        layout_row.addWidget(self.layout_preview)
+        form.addRow("Layout:", layout_row)
+        self._set_layout_preview()
+        self._add_page(page)
+
+    def _wallpaper_path(self, code):
+        base = os.path.join(LAYOUT_DIR, code or "")
+        for ext in ("wallpaper.svg", "wallpaper.png", "wallpaper.jpg",
+                    "wallpaper.jpeg"):
+            f = os.path.join(base, ext)
+            if os.path.isfile(f):
+                return f
+        return None
+
+    def _set_layout_preview(self, *_):
+        code = self.layout_combo.currentData()
+        path = self._wallpaper_path(code)
+        pix = None
+        if path and path.endswith(".svg"):
+            try:
+                from PyQt5 import QtSvg
+                renderer = QtSvg.QSvgRenderer(path)
+                vb = renderer.viewBoxF()
+                w, h = int(vb.width()), int(vb.height())
+                if w <= 0 or h <= 0:
+                    raise ValueError
+                pm = QtGui.QPixmap(int(w), int(h))
+                pm.fill(QtCore.Qt.transparent)
+                painter = QtGui.QPainter(pm)
+                renderer.render(painter)
+                painter.end()
+                pix = pm
+            except Exception:
+                pix = None
+        elif path:
+            pix = QtGui.QPixmap(path)
+        if pix and not pix.isNull():
+            self.layout_preview.setPixmap(pix.scaled(
+                self.layout_preview.size(), QtCore.Qt.KeepAspectRatio,
+                QtCore.Qt.SmoothTransformation))
+        else:
+            self.layout_preview.setText("(sin preview)")
+
+    def _build_extras(self):
+        page = QtWidgets.QWidget()
+        v = QtWidgets.QVBoxLayout(page)
+        title = QtWidgets.QLabel("Opcionales (podés desactivarlos)")
+        title.setStyleSheet(
+            f"font-size:{20 * self.scale:.0f}px; font-weight:bold;")
+        v.addWidget(title)
+        v.addWidget(QtWidgets.QLabel(
+            "Los que requieren internet se descargarán durante la instalación."))
+        v.addSpacing(8)
+
+        def make_chk(text, default=True, hint=""):
+            c = QtWidgets.QCheckBox(text)
+            c.setChecked(default)
+            if hint:
+                c.setToolTip(hint)
+            v.addWidget(c)
+            return c
+
+        self.chk_encrypt = make_chk(
+            "Cifrar disco con LUKS (pide contraseña al arrancar)",
+            False, "Cifra toda la partición del sistema.")
+        self.luks_pass = QtWidgets.QLineEdit()
+        self.luks_pass.setPlaceholderText(
+            "Contraseña del disco cifrado (al menos 8 caracteres)")
+        self.luks_pass.setEchoMode(QtWidgets.QLineEdit.Password)
+        self.luks_pass.setEnabled(False)
+        self.chk_encrypt.toggled.connect(self.luks_pass.setEnabled)
+        v.addWidget(self.luks_pass)
+
+        self.chk_firewall = make_chk(
+            "Activar firewall (nftables: bloquea entradas, permite salidas)",
+            True, "Reglas simples de firewall incluidas en el sistema.")
+        self.chk_octopi = make_chk(
+            "Instalar centro de paquetes gráfico (Octopi)",
+            True, "Requiere internet. Octopi usa el repositorio de Arch.")
+        self.chk_plymouth = make_chk(
+            "Usar pantalla de carga con el logo (plymouth)",
+            True, "Requiere internet.")
+        self.chk_snapper = make_chk(
+            "Snapshots automáticos del sistema (solo btrfs)",
+            False, "Requiere internet y que el filesystem sea btrfs.")
+        self.chk_updates = make_chk(
+            "Instalar actualizaciones al terminar",
+            False, "Requiere internet. Actualiza todo el sistema.")
+        v.addStretch(1)
         self._add_page(page)
 
     def _build_summary(self):
         page = QtWidgets.QWidget()
         v = QtWidgets.QVBoxLayout(page)
         title = QtWidgets.QLabel("Resumen de la instalación")
-        title.setStyleSheet("font-size:18px; font-weight:bold;")
+        title.setStyleSheet(
+            f"font-size:{20 * self.scale:.0f}px; font-weight:bold;")
         v.addWidget(title)
         self.summary = QtWidgets.QPlainTextEdit()
         self.summary.setReadOnly(True)
@@ -541,7 +811,8 @@ class InstallerWindow(QtWidgets.QWidget):
         page = QtWidgets.QWidget()
         v = QtWidgets.QVBoxLayout(page)
         title = QtWidgets.QLabel("Instalando UTN OS...")
-        title.setStyleSheet("font-size:18px; font-weight:bold;")
+        title.setStyleSheet(
+            f"font-size:{20 * self.scale:.0f}px; font-weight:bold;")
         v.addWidget(title)
         self.bar = QtWidgets.QProgressBar()
         v.addWidget(self.bar)
@@ -555,11 +826,13 @@ class InstallerWindow(QtWidgets.QWidget):
         page = QtWidgets.QWidget()
         v = QtWidgets.QVBoxLayout(page)
         title = QtWidgets.QLabel("Instalación finalizada")
-        title.setStyleSheet("font-size:20px; font-weight:bold;")
+        title.setStyleSheet(
+            f"font-size:{22 * self.scale:.0f}px; font-weight:bold;")
         v.addWidget(title)
         self.finish_msg = QtWidgets.QLabel("")
         v.addWidget(self.finish_msg)
         self.btn_reboot = QtWidgets.QPushButton("Reiniciar")
+        self.btn_reboot.setObjectName("accent")
         self.btn_reboot.clicked.connect(
             lambda: os.system("systemctl reboot"))
         v.addWidget(self.btn_reboot, 0, QtCore.Qt.AlignRight)
@@ -569,20 +842,14 @@ class InstallerWindow(QtWidgets.QWidget):
     # ------------------------------------------------------------- navigation
     def _page_changed(self, idx):
         last = self.stack.count() - 1
-        self.btn_back.setVisible(idx > 0 and idx < 3)
-        if idx == 0:
-            self.btn_back.setEnabled(False)
-        else:
-            self.btn_back.setEnabled(True)
-        self.btn_next.setVisible(idx != 4 and idx != last)
+        self.btn_back.setVisible(1 <= idx <= 4)
+        self.btn_back.setEnabled(idx != 5)
+        self.btn_next.setVisible(idx <= 4)
         self.btn_next.setText("Siguiente")
-        if idx == 2:
-            self.btn_next.setText("Instalar")
-        if idx == 3:
-            self.btn_next.setVisible(False)
-            self.btn_reboot.setEnabled(False)
         if idx == 4:
-            self.btn_next.setVisible(False)
+            self.btn_next.setText("Instalar")
+        if idx == 5:
+            self.btn_reboot.setEnabled(False)
 
     def next(self):
         idx = self.stack.currentIndex()
@@ -591,13 +858,41 @@ class InstallerWindow(QtWidgets.QWidget):
         if idx == 1:
             if not self._validate_disk():
                 return
-            self.opts_to_summary()
+            self.stack.setCurrentIndex(2)
+            return
         if idx == 2:
             if not self._validate_users():
                 return
-        self.stack.setCurrentIndex(idx + 1)
-        if self.stack.currentIndex() == 3:
+            self.stack.setCurrentIndex(3)
+            return
+        if idx == 3:
+            if not self._validate_extras():
+                return
+            self.opts_to_summary()
+            self.stack.setCurrentIndex(4)
+            return
+        if idx == 4 and self._validate_disk():
+            self.stack.setCurrentIndex(5)
             self._start_install()
+            return
+        self.stack.setCurrentIndex(idx + 1)
+
+    def _validate_extras(self):
+        if self.chk_encrypt.isChecked():
+            if len(self.luks_pass.text()) < 8:
+                QtWidgets.QMessageBox.warning(
+                    self, "Contraseña de cifrado",
+                    "Completá la contraseña del disco cifrado "
+                    "(al menos 8 caracteres).")
+                return False
+        if (self.chk_snapper.isChecked()
+                and self.fs_combo.currentText() != "btrfs"):
+            QtWidgets.QMessageBox.warning(
+                self, "Snapshots",
+                "Snapper solo funciona con btrfs. "
+                "Cambiá el sistema de archivos o desactivá esta opción.")
+            return False
+        return True
 
     def back(self):
         idx = self.stack.currentIndex()
@@ -617,6 +912,18 @@ class InstallerWindow(QtWidgets.QWidget):
                 "Este disco está en uso (es posible que sea el USB live). "
                 "Elegí otro.")
             return False
+        if self.swap_chk.isChecked():
+            size_b = run(["lsblk", "-bno", "SIZE", data], check=False
+                         ).strip().splitlines()
+            try:
+                size_g = int(size_b[0]) / 1024 ** 3
+            except (ValueError, IndexError):
+                size_g = 0
+            if self.swap_size.value() >= size_g:
+                self.disk_status.setText(
+                    "El swap es mayor o igual que el tamaño del disco. "
+                    "Reducilo o quitá la swap.")
+                return False
         self.disk_status.setText("")
         return True
 
@@ -629,6 +936,16 @@ class InstallerWindow(QtWidgets.QWidget):
         if not host or not user:
             QtWidgets.QMessageBox.warning(self, "Faltan datos",
                                           "Completá nombre de equipo y usuario.")
+            return False
+        if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$", host):
+            QtWidgets.QMessageBox.warning(
+                self, "Nombre de equipo inválido",
+                "Usá solo letras, números y guiones (sin espacios).")
+            return False
+        if not re.match(r"^[a-z_][a-z0-9_-]{0,31}$", user):
+            QtWidgets.QMessageBox.warning(
+                self, "Usuario inválido",
+                "Usá minúsculas, números y guiones bajos (letra inicial).")
             return False
         if len(pw1) < 4:
             QtWidgets.QMessageBox.warning(self, "Contraseña corta",
@@ -659,8 +976,23 @@ class InstallerWindow(QtWidgets.QWidget):
             f"Usuario:               {self.username.text()}\n"
             f"Teclado:               {self.kbd.currentText()}\n"
             f"Zona horaria:          {self.tz.currentText()}\n"
-            f"Layout:                {self.layout_combo.currentData()}"
+            f"Idioma:                {self.locale.currentText()}\n"
+            f"Layout:                {self.layout_combo.currentText().split('—')[0].strip()}"
         )
+        extras = []
+        if self.chk_encrypt.isChecked():
+            extras.append("Cifrado LUKS")
+        if self.chk_firewall.isChecked():
+            extras.append("Firewall")
+        if self.chk_octopi.isChecked():
+            extras.append("Octopi")
+        if self.chk_plymouth.isChecked():
+            extras.append("Plymouth")
+        if self.chk_snapper.isChecked():
+            extras.append("Snapper")
+        if self.chk_updates.isChecked():
+            extras.append("Actualizaciones")
+        txt += "\nExtras:                " + (", ".join(extras) or "ninguno")
         self.summary.setPlainText(txt)
 
     def _start_install(self):
@@ -670,12 +1002,20 @@ class InstallerWindow(QtWidgets.QWidget):
             "swap": self.swap_size.value() if self.swap_chk.isChecked() else 0,
             "keyboard": self.kbd.currentText(),
             "timezone": self.tz.currentText(),
+            "locale": self.locale.currentText(),
             "hostname": self.hostname.text().strip(),
             "username": self.username.text().strip(),
             "fullname": self.fullname.text().strip() or "UTN User",
             "password": self.passwd.text(),
             "root_password": self.root_passwd.text(),
             "layout": self.layout_combo.currentData(),
+            "encrypt": self.chk_encrypt.isChecked(),
+            "luks_passphrase": self.luks_pass.text(),
+            "firewall": self.chk_firewall.isChecked(),
+            "octopi": self.chk_octopi.isChecked(),
+            "plymouth": self.chk_plymouth.isChecked(),
+            "snapper": self.chk_snapper.isChecked(),
+            "updates": self.chk_updates.isChecked(),
         }
         self.btn_next.setEnabled(False)
         self.btn_back.setEnabled(False)
@@ -690,7 +1030,7 @@ class InstallerWindow(QtWidgets.QWidget):
     def _install_done(self, ok, msg):
         self.bar.setValue(100 if ok else self.bar.value())
         if ok:
-            self.stack.setCurrentIndex(4)
+            self.stack.setCurrentIndex(6)
             self.finish_msg.setText(msg)
         else:
             QtWidgets.QMessageBox.critical(self, "Error de instalación",
@@ -704,7 +1044,13 @@ def main():
         print("El instalador debe ejecutarse como root.", file=sys.stderr)
         sys.exit(1)
     app = QtWidgets.QApplication(sys.argv)
-    w = InstallerWindow()
+    app.setWindowIcon(QtWidgets.QIcon(LOGO))
+    scale = ui_scale()
+    font = app.font()
+    font.setPointSizeF(14 * scale)
+    app.setFont(font)
+    app.setStyleSheet(ui_stylesheet(scale))
+    w = InstallerWindow(scale)
     w.showMaximized()
     sys.exit(app.exec_())
 

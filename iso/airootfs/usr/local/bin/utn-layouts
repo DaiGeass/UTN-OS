@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Lista los layouts disponibles en /usr/share/utn-os/layouts leyendo meta.toml.
+
+Salida JSON:
+[{"id": "macos", "display": "macOS", "description": "...", "default": true}, ...]
+
+Para agregar un layout basta con crear una carpeta en layouts/ con su meta.toml:
+no es necesario tocar el instalador ni la bienvenida.
+"""
+import json
+import os
+import re
+import sys
+
+LAYOUT_DIR = "/usr/share/utn-os/layouts"
+
+
+def discover():
+    out = []
+    if not os.path.isdir(LAYOUT_DIR):
+        return out
+    for name in sorted(os.listdir(LAYOUT_DIR)):
+        d = os.path.join(LAYOUT_DIR, name)
+        if not os.path.isdir(d):
+            continue
+        display = name
+        description = ""
+        default = False
+        meta = os.path.join(d, "meta.toml")
+        if os.path.isfile(meta):
+            with open(meta, encoding="utf-8") as fh:
+                for line in fh:
+                    m = re.match(r'^\s*display\s*=\s*"([^"]+)"', line)
+                    if m:
+                        display = m.group(1)
+                    m = re.match(r'^\s*description\s*=\s*"([^"]+)"', line)
+                    if m:
+                        description = m.group(1)
+                    m = re.match(r'^\s*default\s*=\s*(true|false)', line)
+                    if m:
+                        default = m.group(1) == "true"
+        out.append({
+            "id": name,
+            "display": display,
+            "description": description,
+            "default": default,
+        })
+    return out
+
+
+def main():
+    print(json.dumps(discover(), ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

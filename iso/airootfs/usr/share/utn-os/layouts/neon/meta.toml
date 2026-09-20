@@ -1,0 +1,6 @@
+name = "neon"
+display = "Neon"
+description = "Estilo Neon oscuro: gradiente púrpura, esquinas redondeadas y translucidez con blur."
+base = "lxqt"
+packages = ["picom"]
+default = false

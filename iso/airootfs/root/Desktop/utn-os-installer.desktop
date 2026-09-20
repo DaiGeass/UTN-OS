@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS
+Name[es]=Instalar UTN OS
+Comment=Instala UTN OS en el disco
+Exec=/usr/local/bin/utn-installer --splash
+Icon=/usr/share/pixmaps/utn-os.png
+Terminal=false
+Categories=System;Utility;
+StartupNotify=true

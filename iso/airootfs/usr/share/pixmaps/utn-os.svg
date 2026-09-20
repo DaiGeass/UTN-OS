@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="orb" cx="0.32" cy="0.28" r="0.85" fx="0.3" fy="0.24">
+      <stop offset="0" stop-color="#F4FFF7"/>
+      <stop offset="0.22" stop-color="#5CE08A"/>
+      <stop offset="0.5" stop-color="#1C9E3F"/>
+      <stop offset="0.8" stop-color="#175B7A"/>
+      <stop offset="1" stop-color="#2E6FD0"/>
+    </radialGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#071C28" stop-opacity="0.25"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="ut" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DFFFEC"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="248" height="248" rx="60" fill="#0B2E3F"/>
+
+  <polygon points="20,70 110,120 40,210" fill="#ffffff" opacity="0.07"/>
+  <polygon points="240,40 150,95 215,190" fill="#ffffff" opacity="0.07"/>
+
+  <circle cx="128" cy="130" r="96" fill="url(#orb)"/>
+  <circle cx="128" cy="130" r="96" fill="url(#sheen)"/>
+  <ellipse cx="96" cy="84" rx="56" ry="34" fill="url(#glass)"/>
+  <ellipse cx="172" cy="196" rx="44" ry="18" fill="#0A1E2C" opacity="0.35"/>
+  <ellipse cx="128" cy="130" rx="78" ry="24" fill="#ffffff" opacity="0.25"/>
+  <ellipse cx="128" cy="130" rx="60" ry="12" fill="#ffffff" opacity="0.35"/>
+
+  <text x="128" y="176" font-family="DejaVu Sans, Sans, Arial" font-size="120" font-weight="bold" fill="url(#ut)" text-anchor="middle">U</text>
+</svg>

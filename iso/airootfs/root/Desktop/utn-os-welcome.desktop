@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Probar UTN OS
+Name[es]=Bienvenida UTN OS (probar / instalar)
+Comment=Bienvenida: probar el modo live o instalar
+Exec=/usr/local/bin/utn-welcome
+Icon=/usr/share/pixmaps/utn-os.png
+Terminal=false
+Categories=System;Utility;
+StartupNotify=true

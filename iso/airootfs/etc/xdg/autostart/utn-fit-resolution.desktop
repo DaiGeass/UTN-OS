@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=UTN OS fit resolution
+Name[es]=UTN OS ajustar resolución
+Comment=Corrige resoluciones disparatadas en máquinas virtuales
+Comment[es]=Corrige resoluciones disparatadas en máquinas virtuales
+Exec=/usr/local/bin/utn-fit-resolution
+Icon=computer
+Terminal=false
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

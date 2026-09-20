@@ -131,6 +131,11 @@ xorg-server
 xorg-xinit
 lxqt
 breeze-icons
+papirus-icon-theme
+breeze-gtk
+xcursor-themes
+xsettingsd
+cryptsetup
 sddm
 networkmanager
 network-manager-applet

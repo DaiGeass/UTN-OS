@@ -1,0 +1,6 @@
+name = "windowsxp"
+display = "Windows XP"
+description = "Barra inferior azul estilo XP, cristal Frutiger Aero y wallpaper Bliss."
+base = "lxqt"
+packages = ["picom"]
+default = false

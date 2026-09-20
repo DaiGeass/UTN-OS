@@ -1,0 +1,6 @@
+name = "windows10"
+display = "Windows 10"
+description = "Estilo Windows 10: barra de tareas inferior a la izquierda, ventanas cuadradas y fondo azul."
+base = "lxqt"
+packages = ["picom"]
+default = false

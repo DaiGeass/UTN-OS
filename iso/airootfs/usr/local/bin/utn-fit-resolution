@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# En máquinas virtuales QEMU puede pasarse una resolución disparatada
+# (EDID del host). Si ocurre, la baja a una resolución realista.
+# En hardware real no hace nada: systemd-detect-virt devuelve "none".
+set -u
+
+VTMODE="$(systemd-detect-virt 2>/dev/null || echo none)"
+if [ "$VTMODE" = "none" ]; then
+    exit 0
+fi
+
+for _ in $(seq 1 20); do
+    DIM="$(xdpyinfo 2>/dev/null | awk '/dimensions/{print $2; exit}')"
+    [ -n "$DIM" ] && break
+    sleep 1
+done
+
+W="${DIM%%x*}"
+[ -n "$W" ] || exit 0
+[ "$W" -ge 3840 ] || exit 0
+
+OUT="$(xrandr 2>/dev/null | awk '/ connected/{print $1; exit}')"
+[ -n "$OUT" ] || exit 0
+
+for M in 1920x1080 1600x900 1366x768 1280x720 1024x768; do
+    if xrandr 2>/dev/null | grep -q " $M "; then
+        xrandr --output "$OUT" --mode "$M" 2>/dev/null && break
+    fi
+done
+
+exit 0

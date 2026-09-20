@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Cambia la apariencia del escritorio a un layout preconfigurado.
+# Los layouts están en /usr/share/utn-os/layouts (uno por carpeta).
 set -euo pipefail
 
 LAYOUT_DIR="/usr/share/utn-os/layouts"
@@ -6,8 +8,23 @@ CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 BACKUP_DIR="$CONF_DIR/utn-os-backup"
 
 usage() {
-    echo "Uso: utn-layout <moderno|windows8|windows11|macos>"
+    echo "Uso: utn-layout <layout>"
     echo "Cambia la apariencia del escritorio a un layout preconfigurado."
+    echo
+    echo "Layouts disponibles:"
+    while IFS= read -r id; do
+        [ -z "$id" ] && continue
+        if [ -f "$LAYOUT_DIR/$id/meta.toml" ]; then
+            display=$(sed -n 's/^display[[:space:]]*=[[:space:]]*"\([^"]*\)"/\1/p' \
+                "$LAYOUT_DIR/$id/meta.toml" | head -n1)
+            desc=$(sed -n 's/^description[[:space:]]*=[[:space:]]*"\([^"]*\)"/\1/p' \
+                "$LAYOUT_DIR/$id/meta.toml" | head -n1)
+        else
+            display="$id"
+            desc=""
+        fi
+        printf '  %-12s %-16s %s\n' "$id" "${display:-$id}" "$desc"
+    done < <(ls -1 "$LAYOUT_DIR")
 }
 
 if [ $# -ne 1 ]; then
@@ -20,9 +37,7 @@ SRC="$LAYOUT_DIR/$LAYOUT"
 
 if [ ! -d "$SRC" ]; then
     echo "Layout '$LAYOUT' no existe. Disponibles:"
-    for d in "$LAYOUT_DIR"/*/; do
-        basename "$d"
-    done
+    usage
     exit 1
 fi
 
@@ -55,4 +70,23 @@ if command -v picom >/dev/null 2>&1; then
     picom --config "$CONF_DIR/picom.conf" >/dev/null 2>&1 &
 fi
 
-echo "Layout '$LAYOUT' aplicado. Cierra sesión y vuelve a entrar para ver los cambios."
+if [ -n "${DISPLAY:-}" ]; then
+    if command -v pcmanfm-qt >/dev/null 2>&1; then
+        for w in wallpaper.svg wallpaper.png; do
+            if [ -f "$SRC/$w" ]; then
+                pcmanfm-qt --set-wallpaper "$SRC/$w" >/dev/null 2>&1 || true
+                break
+            fi
+        done
+    fi
+    if command -v openbox >/dev/null 2>&1; then
+        openbox --reconfigure 2>/dev/null || true
+    fi
+    if pgrep -x lxqt-panel >/dev/null 2>&1; then
+        pkill -x lxqt-panel 2>/dev/null || true
+        (setsid lxqt-panel >/dev/null 2>&1 &)
+    fi
+    echo "Layout '$LAYOUT' aplicado (cambios visibles al instante)."
+else
+    echo "Layout '$LAYOUT' aplicado. Cierra sesión y vuelve a entrar para ver los cambios."
+fi
