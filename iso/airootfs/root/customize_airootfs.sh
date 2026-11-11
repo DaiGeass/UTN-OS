@@ -13,18 +13,16 @@ done
 install -Dm644 -o 0 -g 0 "$LAYOUT/lxqt/panel.conf" /etc/xdg/lxqt/panel.conf
 install -Dm644 -o 0 -g 0 "$LAYOUT/lxqt/lxqt.conf" /etc/xdg/lxqt/lxqt.conf
 install -Dm644 -o 0 -g 0 "$LAYOUT/openbox/rc.xml" /etc/xdg/openbox/rc.xml
-install -Dm644 -o 0 -g 0 "$LAYOUT/pcmanfm/settings.conf" /etc/xdg/pcmanfm/lxqt/settings.conf
+install -Dm644 -o 0 -g 0 "$LAYOUT/pcmanfm/settings.conf" /etc/xdg/pcmanfm-qt/lxqt/settings.conf
 install -Dm644 -o 0 -g 0 "$LAYOUT/picom.conf" /etc/xdg/picom.conf
 if [ -f "$LAYOUT/kvantum/kvantum.kvconfig" ]; then
     install -Dm644 -o 0 -g 0 "$LAYOUT/kvantum/kvantum.kvconfig" /etc/xdg/Kvantum/kvantum.kvconfig
 fi
 
-install -Dm644 -o 0 -g 0 /dev/null /etc/ssh/sshd_config.d/99-utn-debug.conf
-printf 'PermitRootLogin yes\nPasswordAuthentication yes\nPermitEmptyPasswords yes\n' > /etc/ssh/sshd_config.d/99-utn-debug.conf
-
-install -d -m 700 -o 0 -g 0 /root/.ssh
-install -m600 -o 0 -g 0 /dev/null /root/.ssh/authorized_keys
-printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICol1hILDb27z6RNCiiDaGRD4XKL+VXTIXTbQd9xcRzL root@DaiGeass\n' > /root/.ssh/authorized_keys
+# El live no expone SSH ni instala claves de acceso remoto.
+systemctl disable sshd.service
+# El live debe completar el arranque aun sin conexión a un servidor NTP.
+systemctl disable systemd-time-wait-sync.service
 
 # Arranque live automático: escritorio LXQt con SDDM (autologin root en conf.d)
 systemctl enable sddm 2>/dev/null || true
@@ -60,7 +58,7 @@ gtk-theme-name=Breeze
 gtk-icon-theme-name=Papirus
 gtk-cursor-theme-name=DMZ-White
 gtk-font-name=Noto Sans 10
-gkt-cursor-theme-size=24
+gtk-cursor-theme-size=24
 GTK3
 
 # Cursor por defecto de X11
@@ -68,8 +66,8 @@ install -Dm644 -o 0 -g 0 /dev/null /usr/share/icons/default/index.theme
 printf '[Icon Theme]\nInherits=DMZ-White\n' > /usr/share/icons/default/index.theme
 
 # xsettingsd: aplica tema/iconos/cursor a las apps GTK del live
-install -Dm644 -o 0 -g 0 /dev/null /etc/xdg/xsettingsd/xsettings.conf
-cat > /etc/xdg/xsettingsd/xsettings.conf <<'XSET'
+install -Dm644 -o 0 -g 0 /dev/null /etc/xdg/xsettingsd/xsettingsd.conf
+cat > /etc/xdg/xsettingsd/xsettingsd.conf <<'XSET'
 Net/ThemeName "Breeze"
 Net/IconThemeName "Papirus"
 Gtk/CursorThemeName "DMZ-White"
