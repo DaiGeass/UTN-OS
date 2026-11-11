@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+ <defs>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+   <stop offset="0" stop-color="#063a78"/>
+   <stop offset="0.45" stop-color="#1b74cc"/>
+   <stop offset="0.75" stop-color="#63b8ef"/>
+   <stop offset="1" stop-color="#c9ecff"/>
+  </linearGradient>
+  <linearGradient id="ray" x1="0" y1="0" x2="1" y2="0">
+   <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+   <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.20"/>
+   <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+  </linearGradient>
+ </defs>
+ <rect width="1920" height="1080" fill="url(#sky)"/>
+ <path d="M-100 900 C420 565 860 735 1250 510 C1520 353 1740 365 2020 470 L2020 1080 L-100 1080 Z" fill="#ffffff" opacity="0.10"/>
+ <path d="M-100 1000 C380 710 830 850 1220 640 C1500 490 1740 520 2020 650 L2020 1080 L-100 1080 Z" fill="#ffffff" opacity="0.12"/>
+ <g opacity="0.16">
+  <path d="M0 0 L330 1080 L690 1080 L270 0 Z" fill="url(#ray)"/>
+  <path d="M520 0 L860 1080 L1110 1080 L690 0 Z" fill="url(#ray)"/>
+  <path d="M1120 0 L1420 1080 L1690 1080 L1300 0 Z" fill="url(#ray)"/>
+ </g>
+ <g transform="translate(1380 690) scale(6.6)" opacity="0.94">
+  <g transform="skewY(-7)">
+   <path d="M5 11 L22 8 L22 23 L5 23 Z" fill="#f25022"/>
+   <path d="M25 8 L43 5 L43 23 L25 23 Z" fill="#7fba00"/>
+   <path d="M5 26 L22 26 L22 41 L5 38 Z" fill="#00a4ef"/>
+   <path d="M25 26 L43 26 L43 44 L25 41 Z" fill="#ffb900"/>
+  </g>
+ </g>
+ <ellipse cx="1495" cy="735" rx="210" ry="28" fill="#021c3d" opacity="0.22"/>
+</svg>

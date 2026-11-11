@@ -1,6 +1,6 @@
 name = "modern"
 display = "Moderno"
-description = "Default de UTN OS: panel inferior limpio, sin dock, maxima simplicidad."
+description = "Barra superior oscura y dock inferior centrado con ventanas redondeadas estilo escritorio moderno."
 base = "lxqt"
 packages = []
 default = false

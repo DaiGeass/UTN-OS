@@ -1,0 +1,6 @@
+name = "windows7"
+display = "Windows 7"
+description = "Aero Glass: ventanas translúcidas, barra de tareas oscura, menú Inicio con bandera y fondo azul con aurora."
+base = "lxqt"
+packages = ["picom"]
+default = false

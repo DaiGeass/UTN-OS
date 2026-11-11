@@ -1,9 +1,20 @@
 <openbox_config xmlns="http://openbox.org/3.4/rc">
-  <theme><name>Clearlooks</name></theme>
+  <theme>
+    <name>UTN-Windows11</name>
+    <titleLayout>NLIMC</titleLayout>
+    <keepBorder>yes</keepBorder>
+    <animateIconify>yes</animateIconify>
+    <font>
+      <active>Sans 9</active>
+      <inactive>Sans 9</inactive>
+      <menu>Sans 9</menu>
+      <osd>Sans Bold 10</osd>
+    </font>
+  </theme>
   <placement><policy>Smart</policy></placement>
   <desktops>
-    <number>2</number>
-    <names><name>Principal</name><name>Segundo</name></names>
+    <number>1</number>
+    <names><name>Escritorio</name></names>
   </desktops>
   <resistance><decor>8</decor></resistance>
   <focus><focusNew>yes</focusNew><followMouse>no</followMouse></focus>

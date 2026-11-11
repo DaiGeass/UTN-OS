@@ -1,6 +1,6 @@
 name = "ubuntu"
 display = "Ubuntu"
-description = "Estilo Ubuntu: panel inferior oscuro con acento naranja y escritorio limpio."
+description = "Dock izquierdo y barra superior oscuros, acento naranja y decoración Yaru."
 base = "lxqt"
 packages = ["picom"]
 default = false

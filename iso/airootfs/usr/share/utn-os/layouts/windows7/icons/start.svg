@@ -1,0 +1,9 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+ <g transform="skewY(-7)">
+  <path d="M5 11 L22 8 L22 23 L5 23 Z" fill="#f25022"/>
+  <path d="M25 8 L43 5 L43 23 L25 23 Z" fill="#7fba00"/>
+  <path d="M5 26 L22 26 L22 41 L5 38 Z" fill="#00a4ef"/>
+  <path d="M25 26 L43 26 L43 44 L25 41 Z" fill="#ffb900"/>
+ </g>
+</svg>
