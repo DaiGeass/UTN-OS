@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Archivos (windowsxp)
+Comment=Archivos del layout windowsxp de UTN OS
+Exec=pcmanfm-qt --new-window %U
+Icon=/usr/share/utn-os/layouts/windowsxp/icons/apps/files.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

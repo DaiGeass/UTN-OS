@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (chromeos)
+Comment=Terminal del layout chromeos de UTN OS
+Exec=qterminal
+Icon=/usr/share/utn-os/layouts/chromeos/icons/apps/terminal.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

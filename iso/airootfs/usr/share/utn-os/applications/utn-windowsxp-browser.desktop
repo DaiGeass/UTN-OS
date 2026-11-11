@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Navegador (windowsxp)
+Comment=Navegador del layout windowsxp de UTN OS
+Exec=firefox
+Icon=/usr/share/utn-os/layouts/windowsxp/icons/apps/browser.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

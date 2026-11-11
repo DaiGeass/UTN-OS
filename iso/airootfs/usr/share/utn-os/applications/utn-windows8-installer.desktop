@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS (windows8)
+Comment=Instalar UTN OS del layout windows8 de UTN OS
+Exec=/usr/local/bin/utn-installer
+Icon=/usr/share/utn-os/layouts/windows8/icons/apps/installer.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

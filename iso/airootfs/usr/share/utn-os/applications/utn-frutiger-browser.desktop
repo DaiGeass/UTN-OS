@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Navegador (frutiger)
+Comment=Navegador del layout frutiger de UTN OS
+Exec=firefox
+Icon=/usr/share/utn-os/layouts/frutiger/icons/apps/browser.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

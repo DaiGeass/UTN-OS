@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Office (frutiger)
+Comment=Office del layout frutiger de UTN OS
+Exec=libreoffice
+Icon=/usr/share/utn-os/layouts/frutiger/icons/apps/office.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

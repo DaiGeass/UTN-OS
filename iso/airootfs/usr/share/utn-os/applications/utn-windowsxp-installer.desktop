@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS (windowsxp)
+Comment=Instalar UTN OS del layout windowsxp de UTN OS
+Exec=/usr/local/bin/utn-installer
+Icon=/usr/share/utn-os/layouts/windowsxp/icons/apps/installer.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

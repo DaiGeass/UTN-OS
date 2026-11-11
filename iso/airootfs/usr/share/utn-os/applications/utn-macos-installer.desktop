@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS (macos)
+Comment=Instalar UTN OS del layout macos de UTN OS
+Exec=/usr/local/bin/utn-installer
+Icon=/usr/share/utn-os/layouts/macos/icons/apps/installer.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

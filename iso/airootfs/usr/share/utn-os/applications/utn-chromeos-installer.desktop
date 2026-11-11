@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS (chromeos)
+Comment=Instalar UTN OS del layout chromeos de UTN OS
+Exec=/usr/local/bin/utn-installer
+Icon=/usr/share/utn-os/layouts/chromeos/icons/apps/installer.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

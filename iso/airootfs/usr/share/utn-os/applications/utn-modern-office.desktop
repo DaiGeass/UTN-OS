@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Office (modern)
+Comment=Office del layout modern de UTN OS
+Exec=libreoffice
+Icon=/usr/share/utn-os/layouts/modern/icons/apps/office.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

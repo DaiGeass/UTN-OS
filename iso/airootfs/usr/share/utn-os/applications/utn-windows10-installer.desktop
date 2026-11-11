@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS (windows10)
+Comment=Instalar UTN OS del layout windows10 de UTN OS
+Exec=/usr/local/bin/utn-installer
+Icon=/usr/share/utn-os/layouts/windows10/icons/apps/installer.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

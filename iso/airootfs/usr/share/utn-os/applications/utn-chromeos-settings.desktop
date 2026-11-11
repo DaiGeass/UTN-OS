@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Configuración (chromeos)
+Comment=Configuración del layout chromeos de UTN OS
+Exec=lxqt-config
+Icon=/usr/share/utn-os/layouts/chromeos/icons/apps/settings.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

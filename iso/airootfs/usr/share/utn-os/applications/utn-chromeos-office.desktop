@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Office (chromeos)
+Comment=Office del layout chromeos de UTN OS
+Exec=libreoffice
+Icon=/usr/share/utn-os/layouts/chromeos/icons/apps/office.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Office (neon)
+Comment=Office del layout neon de UTN OS
+Exec=libreoffice
+Icon=/usr/share/utn-os/layouts/neon/icons/apps/office.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

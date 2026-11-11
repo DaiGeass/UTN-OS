@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Office (macos)
+Comment=Office del layout macos de UTN OS
+Exec=libreoffice
+Icon=/usr/share/utn-os/layouts/macos/icons/apps/office.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

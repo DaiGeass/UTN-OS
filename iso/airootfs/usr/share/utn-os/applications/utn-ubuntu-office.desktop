@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Office (ubuntu)
+Comment=Office del layout ubuntu de UTN OS
+Exec=libreoffice
+Icon=/usr/share/utn-os/layouts/ubuntu/icons/apps/office.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

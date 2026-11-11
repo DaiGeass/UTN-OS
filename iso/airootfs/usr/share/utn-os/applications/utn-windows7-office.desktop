@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Office (windows7)
+Comment=Office del layout windows7 de UTN OS
+Exec=libreoffice
+Icon=/usr/share/utn-os/layouts/windows7/icons/apps/office.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

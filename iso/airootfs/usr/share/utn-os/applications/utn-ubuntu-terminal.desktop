@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (ubuntu)
+Comment=Terminal del layout ubuntu de UTN OS
+Exec=qterminal
+Icon=/usr/share/utn-os/layouts/ubuntu/icons/apps/terminal.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

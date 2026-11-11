@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS (windows11)
+Comment=Instalar UTN OS del layout windows11 de UTN OS
+Exec=/usr/local/bin/utn-installer
+Icon=/usr/share/utn-os/layouts/windows11/icons/apps/installer.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

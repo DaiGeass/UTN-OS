@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Archivos (windows8)
+Comment=Archivos del layout windows8 de UTN OS
+Exec=pcmanfm-qt --new-window %U
+Icon=/usr/share/utn-os/layouts/windows8/icons/apps/files.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

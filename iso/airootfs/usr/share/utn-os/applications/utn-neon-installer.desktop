@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS (neon)
+Comment=Instalar UTN OS del layout neon de UTN OS
+Exec=/usr/local/bin/utn-installer
+Icon=/usr/share/utn-os/layouts/neon/icons/apps/installer.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

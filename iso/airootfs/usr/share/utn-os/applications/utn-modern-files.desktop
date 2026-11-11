@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Archivos (modern)
+Comment=Archivos del layout modern de UTN OS
+Exec=pcmanfm-qt --new-window %U
+Icon=/usr/share/utn-os/layouts/modern/icons/apps/files.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

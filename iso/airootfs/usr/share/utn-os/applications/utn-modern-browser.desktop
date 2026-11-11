@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Navegador (modern)
+Comment=Navegador del layout modern de UTN OS
+Exec=firefox
+Icon=/usr/share/utn-os/layouts/modern/icons/apps/browser.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

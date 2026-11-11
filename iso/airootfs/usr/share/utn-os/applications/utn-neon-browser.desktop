@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Navegador (neon)
+Comment=Navegador del layout neon de UTN OS
+Exec=firefox
+Icon=/usr/share/utn-os/layouts/neon/icons/apps/browser.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

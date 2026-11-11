@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Navegador (windows11)
+Comment=Navegador del layout windows11 de UTN OS
+Exec=firefox
+Icon=/usr/share/utn-os/layouts/windows11/icons/apps/browser.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

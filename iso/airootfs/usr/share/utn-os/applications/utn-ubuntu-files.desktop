@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Archivos (ubuntu)
+Comment=Archivos del layout ubuntu de UTN OS
+Exec=pcmanfm-qt --new-window %U
+Icon=/usr/share/utn-os/layouts/ubuntu/icons/apps/files.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

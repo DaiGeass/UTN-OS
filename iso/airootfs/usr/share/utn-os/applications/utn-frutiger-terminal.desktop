@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (frutiger)
+Comment=Terminal del layout frutiger de UTN OS
+Exec=qterminal
+Icon=/usr/share/utn-os/layouts/frutiger/icons/apps/terminal.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

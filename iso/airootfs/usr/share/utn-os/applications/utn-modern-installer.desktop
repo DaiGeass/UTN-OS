@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS (modern)
+Comment=Instalar UTN OS del layout modern de UTN OS
+Exec=/usr/local/bin/utn-installer
+Icon=/usr/share/utn-os/layouts/modern/icons/apps/installer.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

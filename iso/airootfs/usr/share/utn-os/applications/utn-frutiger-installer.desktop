@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS (frutiger)
+Comment=Instalar UTN OS del layout frutiger de UTN OS
+Exec=/usr/local/bin/utn-installer
+Icon=/usr/share/utn-os/layouts/frutiger/icons/apps/installer.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

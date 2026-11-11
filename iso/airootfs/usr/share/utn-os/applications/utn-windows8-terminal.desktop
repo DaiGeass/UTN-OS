@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (windows8)
+Comment=Terminal del layout windows8 de UTN OS
+Exec=qterminal
+Icon=/usr/share/utn-os/layouts/windows8/icons/apps/terminal.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

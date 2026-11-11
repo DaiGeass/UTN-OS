@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Configuración (windowsxp)
+Comment=Configuración del layout windowsxp de UTN OS
+Exec=lxqt-config
+Icon=/usr/share/utn-os/layouts/windowsxp/icons/apps/settings.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

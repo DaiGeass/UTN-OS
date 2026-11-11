@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (modern)
+Comment=Terminal del layout modern de UTN OS
+Exec=qterminal
+Icon=/usr/share/utn-os/layouts/modern/icons/apps/terminal.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

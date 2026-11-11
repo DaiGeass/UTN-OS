@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS (windows7)
+Comment=Instalar UTN OS del layout windows7 de UTN OS
+Exec=/usr/local/bin/utn-installer
+Icon=/usr/share/utn-os/layouts/windows7/icons/apps/installer.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

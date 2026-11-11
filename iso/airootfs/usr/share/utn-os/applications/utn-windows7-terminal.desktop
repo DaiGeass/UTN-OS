@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (windows7)
+Comment=Terminal del layout windows7 de UTN OS
+Exec=qterminal
+Icon=/usr/share/utn-os/layouts/windows7/icons/apps/terminal.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (windowsxp)
+Comment=Terminal del layout windowsxp de UTN OS
+Exec=qterminal
+Icon=/usr/share/utn-os/layouts/windowsxp/icons/apps/terminal.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

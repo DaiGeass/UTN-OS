@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (windows10)
+Comment=Terminal del layout windows10 de UTN OS
+Exec=qterminal
+Icon=/usr/share/utn-os/layouts/windows10/icons/apps/terminal.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

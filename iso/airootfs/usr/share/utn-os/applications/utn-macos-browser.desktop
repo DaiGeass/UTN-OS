@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Navegador (macos)
+Comment=Navegador del layout macos de UTN OS
+Exec=firefox
+Icon=/usr/share/utn-os/layouts/macos/icons/apps/browser.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

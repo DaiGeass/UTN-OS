@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (neon)
+Comment=Terminal del layout neon de UTN OS
+Exec=qterminal
+Icon=/usr/share/utn-os/layouts/neon/icons/apps/terminal.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

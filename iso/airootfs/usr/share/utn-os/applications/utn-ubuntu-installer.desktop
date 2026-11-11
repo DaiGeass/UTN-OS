@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Instalar UTN OS (ubuntu)
+Comment=Instalar UTN OS del layout ubuntu de UTN OS
+Exec=/usr/local/bin/utn-installer
+Icon=/usr/share/utn-os/layouts/ubuntu/icons/apps/installer.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

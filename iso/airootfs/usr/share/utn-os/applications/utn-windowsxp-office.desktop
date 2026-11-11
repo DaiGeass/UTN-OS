@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Office (windowsxp)
+Comment=Office del layout windowsxp de UTN OS
+Exec=libreoffice
+Icon=/usr/share/utn-os/layouts/windowsxp/icons/apps/office.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

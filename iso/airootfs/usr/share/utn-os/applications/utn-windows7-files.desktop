@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Archivos (windows7)
+Comment=Archivos del layout windows7 de UTN OS
+Exec=pcmanfm-qt --new-window %U
+Icon=/usr/share/utn-os/layouts/windows7/icons/apps/files.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

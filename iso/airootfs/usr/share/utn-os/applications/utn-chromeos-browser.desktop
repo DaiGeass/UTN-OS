@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Navegador (chromeos)
+Comment=Navegador del layout chromeos de UTN OS
+Exec=firefox
+Icon=/usr/share/utn-os/layouts/chromeos/icons/apps/browser.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

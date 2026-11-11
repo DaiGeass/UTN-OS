@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Archivos (chromeos)
+Comment=Archivos del layout chromeos de UTN OS
+Exec=pcmanfm-qt --new-window %U
+Icon=/usr/share/utn-os/layouts/chromeos/icons/apps/files.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

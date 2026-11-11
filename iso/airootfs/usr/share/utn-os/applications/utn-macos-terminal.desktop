@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (macos)
+Comment=Terminal del layout macos de UTN OS
+Exec=qterminal
+Icon=/usr/share/utn-os/layouts/macos/icons/apps/terminal.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

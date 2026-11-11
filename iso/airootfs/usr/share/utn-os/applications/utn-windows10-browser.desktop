@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Navegador (windows10)
+Comment=Navegador del layout windows10 de UTN OS
+Exec=firefox
+Icon=/usr/share/utn-os/layouts/windows10/icons/apps/browser.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

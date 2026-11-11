@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Archivos (macos)
+Comment=Archivos del layout macos de UTN OS
+Exec=pcmanfm-qt --new-window %U
+Icon=/usr/share/utn-os/layouts/macos/icons/apps/files.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

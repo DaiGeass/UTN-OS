@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Archivos (windows10)
+Comment=Archivos del layout windows10 de UTN OS
+Exec=pcmanfm-qt --new-window %U
+Icon=/usr/share/utn-os/layouts/windows10/icons/apps/files.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

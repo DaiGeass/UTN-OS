@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Office (windows10)
+Comment=Office del layout windows10 de UTN OS
+Exec=libreoffice
+Icon=/usr/share/utn-os/layouts/windows10/icons/apps/office.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Configuración (frutiger)
+Comment=Configuración del layout frutiger de UTN OS
+Exec=lxqt-config
+Icon=/usr/share/utn-os/layouts/frutiger/icons/apps/settings.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

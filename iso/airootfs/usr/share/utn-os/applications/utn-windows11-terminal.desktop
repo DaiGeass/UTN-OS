@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (windows11)
+Comment=Terminal del layout windows11 de UTN OS
+Exec=qterminal
+Icon=/usr/share/utn-os/layouts/windows11/icons/apps/terminal.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

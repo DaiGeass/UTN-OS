@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Office (windows8)
+Comment=Office del layout windows8 de UTN OS
+Exec=libreoffice
+Icon=/usr/share/utn-os/layouts/windows8/icons/apps/office.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

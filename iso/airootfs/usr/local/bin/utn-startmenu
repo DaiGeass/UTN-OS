@@ -1,0 +1,467 @@
+#!/usr/bin/env python3
+import configparser
+import subprocess
+import sys
+from pathlib import Path
+
+try:
+    from PyQt5.QtCore import QSize, Qt
+    from PyQt5.QtGui import QFont, QIcon, QPixmap
+    from PyQt5.QtWidgets import (
+        QApplication,
+        QFrame,
+        QGridLayout,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QPushButton,
+        QToolButton,
+        QVBoxLayout,
+        QWidget,
+    )
+except ImportError:
+    subprocess.Popen(["lxqt-runner"])
+    sys.exit(0)
+
+ASSETS = Path("/usr/share/utn-os")
+LAYOUTS = Path("/usr/share/utn-os/layouts")
+
+CONFIGS = {
+    "windows7": ("Windows 7", "Inicio", "list", True),
+    "windows8": ("Inicio", "UTN OS · Windows 8", "tiles", False),
+    "windows10": ("Windows 10", "Inicio", "list", True),
+    "windows11": ("Windows 11", "Inicio", "list", True),
+    "windowsxp": ("Windows XP", "Inicio", "list", True),
+    "macos": ("Finder", "macOS", "list", True),
+    "chromeos": ("Aplicaciones", "ChromeOS", "tiles", False),
+    "ubuntu": ("Aplicaciones", "Ubuntu", "list", True),
+    "modern": ("Aplicaciones", "UTN Moderno", "list", True),
+    "neon": ("Aplicaciones", "UTN Neón", "list", True),
+    "frutiger": ("Aplicaciones", "UTN Frutiger", "list", True),
+}
+
+NAMES = {
+    "files": {
+        "windows7": "Explorador de Windows",
+        "windows8": "Explorador de archivos",
+        "windows10": "Explorador de archivos",
+        "windows11": "Explorador de archivos",
+        "windowsxp": "Mis documentos",
+        "macos": "Finder",
+        "chromeos": "Archivos",
+    },
+    "browser": {"windows7": "Internet", "windowsxp": "Internet", "macos": "Safari"},
+    "terminal": {"macos": "Terminal", "chromeos": "Terminal"},
+    "office": {"macos": "Pages", "windows7": "Documentos"},
+    "settings": {"macos": "Preferencias"},
+    "installer": {},
+}
+
+APPS = (
+    ("files", "Archivos", ["pcmanfm-qt", "--new-window", str(Path.home())]),
+    ("browser", "Navegador", ["firefox"]),
+    ("terminal", "Terminal", ["qterminal"]),
+    ("office", "Office", ["libreoffice"]),
+    ("settings", "Configuración", ["lxqt-config"]),
+)
+
+TILE_COLORS = {
+    "files": ("#0078d7", "#2b93e6"),
+    "browser": ("#00a300", "#13c213"),
+    "terminal": ("#e51400", "#ff3724"),
+    "office": ("#ff8c00", "#ffa733"),
+    "settings": ("#6a00ff", "#8733ff"),
+    "installer": ("#2e6fd0", "#4a8be6"),
+}
+
+STYLES = {
+    "windows7": """
+        #card { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #dcebfd, stop:1 #f8fbff); border: 2px solid #1b5fc1; border-radius: 7px; }
+        QLabel#title { color: #0b2a5b; font-size: 18px; font-weight: 600; }
+        QLabel#subtitle { color: #1b5fc1; font-size: 11px; }
+        QLineEdit#search { background: #ffffff; border: 1px solid #7aa7e0; border-radius: 3px; padding: 7px; color: #0b2a5b; }
+        QToolButton#app { background: transparent; border: 1px solid transparent; border-radius: 3px; color: #0b2a5b; padding: 6px; text-align: left; }
+        QToolButton#app:hover { background: #cfe3ff; border: 1px solid #7aa7e0; }
+        QPushButton#foot { background: transparent; border: 1px solid #7aa7e0; border-radius: 3px; color: #0b2a5b; padding: 5px 9px; }
+        QPushButton#foot:hover { background: #cfe3ff; }
+    """,
+    "windows8": """
+        #card { background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #07111f, stop:0.55 #0b2f52, stop:1 #0b5f86); border: 0; }
+        QLabel#title { color: #ffffff; font-size: 36px; font-weight: 300; }
+        QLabel#subtitle { color: #9fd8ff; font-size: 13px; }
+        QLineEdit#search { background: rgba(255, 255, 255, 34); border: 1px solid rgba(255, 255, 255, 95); border-radius: 0; padding: 9px; color: #ffffff; }
+        QToolButton#app { background: #0078d7; border: 0; color: #ffffff; padding: 12px; }
+        QToolButton#app:hover { background: #2b93e6; border: 0; }
+        QFrame#charms { background: rgba(4, 12, 22, 190); border-left: 1px solid rgba(255, 255, 255, 45); }
+        QToolButton#charm { background: transparent; border: 0; color: #ffffff; font-size: 10px; padding: 4px; }
+        QToolButton#charm:hover { background: rgba(255, 255, 255, 35); }
+        QPushButton#foot { background: rgba(255, 255, 255, 24); border: 1px solid rgba(255, 255, 255, 95); color: #ffffff; padding: 6px 10px; }
+        QPushButton#foot:hover { background: #0078d7; }
+    """,
+    "windows10": """
+        #card { background: #202020; border: 1px solid #3c3c3c; }
+        QLabel#title { color: #ffffff; font-size: 18px; font-weight: 300; }
+        QLabel#subtitle { color: #00bcf2; font-size: 11px; }
+        QLineEdit#search { background: #2d2d2d; border: 1px solid #5a5a5a; padding: 7px; color: #ffffff; }
+        QToolButton#app { background: transparent; border: 1px solid transparent; color: #ffffff; padding: 6px; text-align: left; }
+        QToolButton#app:hover { background: #2d2d2d; border: 1px solid #0078d7; }
+        QPushButton#foot { background: transparent; border: 1px solid #5a5a5a; color: #ffffff; padding: 5px 9px; }
+        QPushButton#foot:hover { background: #0078d7; }
+    """,
+    "windows11": """
+        #card { background: #f3f3f3; border: 1px solid #d0d0d0; border-radius: 14px; }
+        QLabel#title { color: #1b1b1b; font-size: 18px; font-weight: 600; }
+        QLabel#subtitle { color: #0067c0; font-size: 11px; }
+        QLineEdit#search { background: #ffffff; border: 1px solid #c8c8c8; border-radius: 8px; padding: 8px; color: #1b1b1b; }
+        QToolButton#app { background: transparent; border: 1px solid transparent; border-radius: 8px; color: #1b1b1b; padding: 6px; text-align: left; }
+        QToolButton#app:hover { background: #e5e5e5; }
+        QPushButton#foot { background: transparent; border: 1px solid #c8c8c8; border-radius: 8px; color: #1b1b1b; padding: 5px 9px; }
+        QPushButton#foot:hover { background: #e5e5e5; }
+    """,
+    "windowsxp": """
+        #card { background: #ece9d8; border: 2px solid #0054e3; border-radius: 7px; }
+        QLabel#title { color: #ffffff; background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3c81f3, stop:1 #0054e3); font-size: 18px; font-weight: 700; padding: 6px; }
+        QLabel#subtitle { color: #003399; font-size: 11px; }
+        QLineEdit#search { background: #ffffff; border: 1px solid #7f9db9; padding: 6px; color: #000000; }
+        QToolButton#app { background: transparent; border: 1px solid transparent; color: #000000; padding: 6px; text-align: left; }
+        QToolButton#app:hover { background: #316ac5; color: #ffffff; }
+        QPushButton#foot { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #d6d2c2); border: 1px solid #003399; color: #000000; padding: 5px 9px; }
+        QPushButton#foot:hover { background: #ffe08a; }
+    """,
+    "macos": """
+        #card { background: rgba(246, 246, 248, 246); border: 1px solid #b9b9bd; border-radius: 14px; }
+        QLabel#title { color: #1d1d1f; font-size: 18px; font-weight: 600; }
+        QLabel#subtitle { color: #6e6e73; font-size: 11px; }
+        QLineEdit#search { background: #ffffff; border: 1px solid #c7c7cc; border-radius: 7px; padding: 7px; color: #1d1d1f; }
+        QToolButton#app { background: transparent; border: 1px solid transparent; border-radius: 6px; color: #1d1d1f; padding: 6px; text-align: left; }
+        QToolButton#app:hover { background: #e5e5e7; }
+        QPushButton#foot { background: transparent; border: 1px solid #c7c7cc; border-radius: 7px; color: #1d1d1f; padding: 5px 9px; }
+        QPushButton#foot:hover { background: #e5e5e7; }
+    """,
+    "chromeos": """
+        #card { background: #f1f3f4; border: 1px solid #dadce0; border-radius: 24px; }
+        QLabel#title { color: #202124; font-size: 20px; font-weight: 500; }
+        QLabel#subtitle { color: #5f6368; font-size: 11px; }
+        QLineEdit#search { background: #ffffff; border: 1px solid #dadce0; border-radius: 20px; padding: 8px; color: #202124; }
+        QToolButton#app { background: #ffffff; border: 1px solid #dadce0; border-radius: 18px; color: #202124; padding: 8px; }
+        QToolButton#app:hover { background: #e8f0fe; border: 1px solid #1a73e8; }
+        QPushButton#foot { background: #ffffff; border: 1px solid #dadce0; border-radius: 18px; color: #202124; padding: 5px 9px; }
+        QPushButton#foot:hover { background: #e8f0fe; }
+    """,
+    "ubuntu": """
+        #card { background: #2c001e; border: 1px solid #5e2750; border-radius: 8px; }
+        QLabel#title { color: #ffffff; font-size: 18px; font-weight: 600; }
+        QLabel#subtitle { color: #e95420; font-size: 11px; }
+        QLineEdit#search { background: #3b0a2a; border: 1px solid #77216f; padding: 7px; color: #ffffff; }
+        QToolButton#app { background: transparent; border: 1px solid transparent; border-radius: 5px; color: #ffffff; padding: 6px; text-align: left; }
+        QToolButton#app:hover { background: #77216f; border: 1px solid #e95420; }
+        QPushButton#foot { background: transparent; border: 1px solid #77216f; color: #ffffff; padding: 5px 9px; }
+        QPushButton#foot:hover { background: #e95420; }
+    """,
+    "modern": """
+        #card { background: #1e1e2e; border: 1px solid #45475a; border-radius: 10px; }
+        QLabel#title { color: #cdd6f4; font-size: 18px; font-weight: 600; }
+        QLabel#subtitle { color: #89b4fa; font-size: 11px; }
+        QLineEdit#search { background: #313244; border: 1px solid #585b70; border-radius: 6px; padding: 7px; color: #cdd6f4; }
+        QToolButton#app { background: transparent; border: 1px solid transparent; border-radius: 6px; color: #cdd6f4; padding: 6px; text-align: left; }
+        QToolButton#app:hover { background: #313244; border: 1px solid #89b4fa; }
+        QPushButton#foot { background: transparent; border: 1px solid #585b70; border-radius: 6px; color: #cdd6f4; padding: 5px 9px; }
+        QPushButton#foot:hover { background: #313244; }
+    """,
+    "neon": """
+        #card { background: #0b0b1a; border: 1px solid #b100ff; border-radius: 4px; }
+        QLabel#title { color: #ffffff; font-size: 18px; font-weight: 700; }
+        QLabel#subtitle { color: #00f0ff; font-size: 11px; }
+        QLineEdit#search { background: #150a2e; border: 1px solid #00f0ff; padding: 7px; color: #ffffff; }
+        QToolButton#app { background: transparent; border: 1px solid #34105c; color: #ffffff; padding: 6px; text-align: left; }
+        QToolButton#app:hover { background: #1a0b33; border: 1px solid #b100ff; }
+        QPushButton#foot { background: transparent; border: 1px solid #00f0ff; color: #ffffff; padding: 5px 9px; }
+        QPushButton#foot:hover { background: #b100ff; }
+    """,
+    "frutiger": """
+        #card { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #dff4ff, stop:1 #79b9d8); border: 1px solid #ffffff; border-radius: 12px; }
+        QLabel#title { color: #0c3d57; font-size: 18px; font-weight: 600; }
+        QLabel#subtitle { color: #ffffff; font-size: 11px; }
+        QLineEdit#search { background: rgba(255, 255, 255, 220); border: 1px solid #ffffff; border-radius: 9px; padding: 7px; color: #0c3d57; }
+        QToolButton#app { background: rgba(255, 255, 255, 170); border: 1px solid #ffffff; border-radius: 9px; color: #0c3d57; padding: 6px; text-align: left; }
+        QToolButton#app:hover { background: rgba(255, 255, 255, 245); border: 1px solid #1b7ca6; }
+        QPushButton#foot { background: rgba(255, 255, 255, 170); border: 1px solid #ffffff; border-radius: 9px; color: #0c3d57; padding: 5px 9px; }
+        QPushButton#foot:hover { background: rgba(255, 255, 255, 245); }
+    """,
+}
+
+
+def panel_position(layout):
+    path = LAYOUTS / layout / "lxqt/panel.conf"
+    config = configparser.ConfigParser(interpolation=None)
+    config.read(path)
+    if "General" not in config:
+        return "Bottom", 40
+    for name in (item.strip() for item in config["General"].get("panels", "").split(",")):
+        if not name or name not in config:
+            continue
+        if "startmenu" in config[name].get("plugins", ""):
+            return config[name].get("position", "Bottom"), config[name].getint("panelSize", 40)
+    return "Bottom", 40
+
+
+class Menu(QWidget):
+    def __init__(self, layout):
+        super().__init__(None, Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.layout_id = layout
+        self.fullscreen = layout == "windows8"
+        self.buttons = []
+        title, subtitle, self.mode, self.power = CONFIGS[layout]
+        self.title = title
+        self.subtitle = subtitle
+        self.setStyleSheet(STYLES[layout])
+        self.build()
+        self.place()
+
+    def build(self):
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        card = QFrame()
+        card.setObjectName("card")
+        outer.addWidget(card)
+        body = QVBoxLayout(card)
+        if self.fullscreen:
+            body.setContentsMargins(80, 48, 120, 40)
+            body.setSpacing(18)
+        else:
+            body.setContentsMargins(16, 14, 16, 14)
+            body.setSpacing(9)
+
+        header = QHBoxLayout()
+        header.setSpacing(10)
+        logo = QLabel()
+        logo_path = ASSETS / "icons/utn-logo.png"
+        if logo_path.is_file():
+            logo_size = 56 if self.fullscreen else 40
+            logo.setPixmap(QPixmap(str(logo_path)).scaled(logo_size, logo_size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        header.addWidget(logo)
+        names = QVBoxLayout()
+        names.setSpacing(0)
+        title = QLabel(self.title)
+        title.setObjectName("title")
+        subtitle = QLabel(self.subtitle)
+        subtitle.setObjectName("subtitle")
+        names.addWidget(title)
+        names.addWidget(subtitle)
+        header.addLayout(names)
+        header.addStretch(1)
+        close = QPushButton("×")
+        close.setObjectName("foot")
+        close.setFixedSize(26, 26)
+        close.clicked.connect(self.close)
+        header.addWidget(close)
+        body.addLayout(header)
+
+        self.search = QLineEdit()
+        self.search.setObjectName("search")
+        self.search.setPlaceholderText("Buscar aplicaciones")
+        self.search.textChanged.connect(self.filter)
+        if self.fullscreen:
+            search_row = QHBoxLayout()
+            self.search.setFixedWidth(420)
+            search_row.addWidget(self.search)
+            search_row.addStretch(1)
+            body.addLayout(search_row)
+        else:
+            body.addWidget(self.search)
+
+        apps = list(APPS)
+        if self.fullscreen:
+            apps.append(("installer", "Instalar UTN OS", ["/usr/local/bin/utn-installer"]))
+
+        if self.mode == "tiles":
+            grid = QGridLayout()
+            grid.setHorizontalSpacing(10 if self.fullscreen else 8)
+            grid.setVerticalSpacing(10 if self.fullscreen else 8)
+            for index, (kind, label, command) in enumerate(apps):
+                button = self.app_button(kind, label, command, tile=True)
+                grid.addWidget(button, index // 3, index % 3)
+                self.buttons.append(button)
+            if self.fullscreen:
+                grid_host = QWidget()
+                grid_host.setFixedWidth(500)
+                grid_host.setLayout(grid)
+                grid_row = QHBoxLayout()
+                grid_row.addWidget(grid_host)
+                grid_row.addStretch(1)
+                body.addLayout(grid_row)
+            else:
+                body.addLayout(grid)
+                self.setFixedSize(392, 438)
+        else:
+            app_list = QVBoxLayout()
+            app_list.setSpacing(2)
+            for kind, label, command in apps:
+                button = self.app_button(kind, label, command, tile=False)
+                app_list.addWidget(button)
+                self.buttons.append(button)
+            body.addLayout(app_list)
+            self.setFixedSize(376, 462)
+
+        body.addStretch(1)
+        footer = QHBoxLayout()
+        footer.setSpacing(6)
+        if not self.fullscreen:
+            install = QPushButton("Instalar UTN OS")
+            install.setObjectName("foot")
+            if logo_path.is_file():
+                install.setIcon(QIcon(str(logo_path)))
+                install.setIconSize(QSize(18, 18))
+            install.clicked.connect(lambda: self.launch(["/usr/local/bin/utn-installer"]))
+            footer.addWidget(install)
+        else:
+            session = QLabel("UTN OS · sesión live")
+            session.setObjectName("subtitle")
+            footer.addWidget(session)
+        footer.addStretch(1)
+        if self.power:
+            off = QPushButton("Apagar")
+            off.setObjectName("foot")
+            off.clicked.connect(lambda: self.launch(["systemctl", "poweroff"]))
+            footer.addWidget(off)
+            restart = QPushButton("Reiniciar")
+            restart.setObjectName("foot")
+            restart.clicked.connect(lambda: self.launch(["systemctl", "reboot"]))
+            footer.addWidget(restart)
+        body.addLayout(footer)
+        if self.fullscreen:
+            self.charms = self.build_charms()
+        self.search.setFocus()
+
+    def build_charms(self):
+        charms = QFrame(self)
+        charms.setObjectName("charms")
+        column = QVBoxLayout(charms)
+        column.setContentsMargins(8, 120, 8, 26)
+        column.setSpacing(8)
+
+        def add_charm(icon_name, label, action):
+            button = QToolButton(charms)
+            button.setObjectName("charm")
+            button.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+            button.setIcon(QIcon.fromTheme(icon_name))
+            button.setIconSize(QSize(26, 26))
+            button.setText(label)
+            button.setFixedSize(76, 72)
+            button.clicked.connect(action)
+            column.addWidget(button, 0, Qt.AlignHCenter)
+
+        add_charm("edit-find", "Buscar", self.focus_search)
+        add_charm("folder", "Compartir", lambda: self.launch(["pcmanfm-qt", "--new-window", str(Path.home())]))
+        add_charm("go-home", "Inicio", self.close)
+        add_charm("computer", "Dispositivos", lambda: self.launch(["pcmanfm-qt", "--new-window", "/"]))
+        add_charm("preferences-system", "Ajustes", lambda: self.launch(["lxqt-config"]))
+        column.addStretch(1)
+        add_charm("system-shutdown", "Apagar", lambda: self.launch(["systemctl", "poweroff"]))
+        add_charm("view-refresh", "Reiniciar", lambda: self.launch(["systemctl", "reboot"]))
+        return charms
+
+    def focus_search(self):
+        self.search.setFocus()
+        self.search.selectAll()
+
+    def app_button(self, kind, label, command, tile):
+        name = NAMES.get(kind, {}).get(self.layout_id, label)
+        button = QToolButton()
+        button.setObjectName("app")
+        button.setText(name)
+        if kind == "installer":
+            icon = ASSETS / "icons/utn-logo.png"
+        else:
+            icon = LAYOUTS / self.layout_id / "icons/apps" / f"{kind}.svg"
+        if icon.is_file():
+            button.setIcon(QIcon(str(icon)))
+        if tile:
+            button.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+            if self.fullscreen:
+                normal, hover = TILE_COLORS.get(kind, ("#0078d7", "#2b93e6"))
+                button.setStyleSheet(
+                    "QToolButton#app { background: %s; border: 0; color: #ffffff; padding: 12px; font-size: 13px; }"
+                    "QToolButton#app:hover { background: %s; border: 0; }" % (normal, hover)
+                )
+                button.setIconSize(QSize(64, 64))
+                button.setFixedSize(160, 160)
+            else:
+                button.setIconSize(QSize(42, 42))
+                button.setFixedSize(116, 116)
+        else:
+            button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+            button.setIconSize(QSize(32, 32))
+            button.setMinimumHeight(44)
+        button.clicked.connect(lambda checked=False, command=command: self.launch(command))
+        return button
+
+    def filter(self, text):
+        query = text.strip().lower()
+        for button in self.buttons:
+            button.setVisible(query in button.text().lower())
+
+    def launch(self, command):
+        subprocess.Popen(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        self.close()
+        QApplication.quit()
+
+    def place(self):
+        if self.fullscreen:
+            screen = QApplication.primaryScreen().geometry()
+            self.setFixedSize(screen.width(), screen.height())
+            self.move(screen.x(), screen.y())
+            self.charms.setGeometry(screen.width() - 92, 0, 92, screen.height())
+            self.charms.raise_()
+            return
+        screen = QApplication.primaryScreen().availableGeometry()
+        position, panel_size = panel_position(self.layout_id)
+        width, height = self.width(), self.height()
+        gap = 8
+        if position == "Top":
+            x = gap
+            y = panel_size + gap
+        elif position == "Left":
+            x = panel_size + gap
+            y = max(gap, screen.height() - height - 90)
+        elif position == "Right":
+            x = max(gap, screen.width() - panel_size - width - gap)
+            y = max(gap, screen.height() - height - 90)
+        else:
+            x = gap
+            if self.layout_id == "chromeos":
+                x = max(gap, (screen.width() - width) // 2)
+            y = max(gap, screen.height() - panel_size - height - gap)
+        if self.layout_id == "macos":
+            x = gap
+            y = panel_size + gap
+        self.move(screen.x() + x, screen.y() + y)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(event)
+
+
+def main():
+    layout = sys.argv[1] if len(sys.argv) > 1 else "windows7"
+    if layout not in CONFIGS:
+        layout = "windows7"
+    app = QApplication(sys.argv[:1])
+    app.setQuitOnLastWindowClosed(True)
+    app.setFont(QFont("DejaVu Sans", 10))
+    menu = Menu(layout)
+    menu.show()
+    menu.search.setFocus()
+    sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+    main()

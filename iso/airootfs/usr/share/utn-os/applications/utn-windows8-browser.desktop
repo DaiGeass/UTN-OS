@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Navegador (windows8)
+Comment=Navegador del layout windows8 de UTN OS
+Exec=firefox
+Icon=/usr/share/utn-os/layouts/windows8/icons/apps/browser.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;

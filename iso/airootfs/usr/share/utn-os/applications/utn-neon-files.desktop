@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Archivos (neon)
+Comment=Archivos del layout neon de UTN OS
+Exec=pcmanfm-qt --new-window %U
+Icon=/usr/share/utn-os/layouts/neon/icons/apps/files.svg
+Terminal=false
+StartupNotify=false
+Categories=Utility;
