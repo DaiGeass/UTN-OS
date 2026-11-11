@@ -65,6 +65,7 @@ def ui_scale():
 def stylesheet(mode="dark", scale=1.0):
     P = PALETTES[mode]
     fs = lambda n: int(n * scale)
+    check_icon = os.path.join(os.path.dirname(__file__), "check.png")
     return f"""
 QWidget {{ background-color:{P['bg']}; color:{P['text']}; font-size:{fs(14)}px; }}
 QFrame, QDialog, QMessageBox {{ background-color:{P['bg']}; }}
@@ -109,14 +110,16 @@ QPlainTextEdit, QLineEdit {{
     border-radius:{fs(8)}px; padding:{fs(6)}px; color:{P['text']};
 }}
 QCheckBox {{ background:transparent; color:{P['text']}; spacing:{fs(8)}px; }}
+QCheckBox::indicator {{ width:{fs(16)}px; height:{fs(16)}px; border:1px solid {P['muted']}; border-radius:{fs(3)}px; background:{P['input']}; }}
+QCheckBox::indicator:checked {{ background:{P['accent']}; image:url({check_icon}); }}
 QSpinBox {{
     background-color:{P['panel']}; border:1px solid {P['border']};
     border-radius:{fs(6)}px; padding:{fs(4)}px; color:{P['text']};
 }}
-QGroupBox {{{{
+QGroupBox {{
     border:1px solid {P['border']}; border-radius:{fs(10)}px;
     margin-top:{fs(14)}px; padding-top:{fs(10)}px;
-}}}}
+}}
 QGroupBox::title {{
     subcontrol-origin:margin; left:{fs(12)}px; padding:0 {fs(6)}px;
     color:{P['title']}; font-weight:bold;

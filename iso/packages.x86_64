@@ -135,7 +135,6 @@ papirus-icon-theme
 breeze-gtk
 xcursor-themes
 xsettingsd
-cryptsetup
 sddm
 networkmanager
 network-manager-applet
@@ -145,3 +144,13 @@ picom
 kvantum
 os-prober
 python-pyqt5
+qt5-svg
+nftables
+xorg-setxkbmap
+xorg-xrandr
+xorg-xdpyinfo
+firefox
+libreoffice-fresh
+git
+base-devel
+gdb

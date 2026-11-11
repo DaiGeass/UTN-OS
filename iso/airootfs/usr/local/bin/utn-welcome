@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 sys.path.insert(0, "/usr/share/utn-os")
 import utn_theme as UT
 
-KEYBOARDS = ["us", "latam", "es", "br", "fr", "de", "pt", "it", "uk"]
+KEYBOARDS = ["us", "latam", "es", "br", "fr", "de", "pt", "it", "gb"]
 
 LOGO = "/usr/share/pixmaps/utn-os.png"
 
@@ -103,6 +103,7 @@ class WelcomeWindow(QtWidgets.QWidget):
         tip.setStyleSheet(f"color:{UT.PALETTES[self.mode]['muted']}; "
                           f"font-size:{12 * self.scale:.0f}px;")
         tip.setAlignment(QtCore.Qt.AlignCenter)
+        tip.setWordWrap(True)
         v.addWidget(tip)
 
         v.addStretch(1)
@@ -189,12 +190,13 @@ class WelcomeWindow(QtWidgets.QWidget):
         if layouts:
             items = [
                 f"{d['display']}  —  {d['description']}" for d in layouts]
-            ok, sel = QtWidgets.QInputDialog.getItem(
+            selected, ok = QtWidgets.QInputDialog.getItem(
                 self, "Modo live",
                 "¿Con qué layout querés probar?\n"
                 "(Cancelar = dejar el layout actual)",
                 items, 0, False)
-            if ok:
+            if ok and selected in items:
+                sel = items.index(selected)
                 code = layouts[sel]["id"]
                 res = run(["utn-layout", code])
                 if res.returncode == 0:
@@ -221,12 +223,13 @@ class WelcomeWindow(QtWidgets.QWidget):
             return
         items = [
             f"{d['display']}  —  {d['description']}" for d in layouts]
-        ok, sel = QtWidgets.QInputDialog.getItem(
+        selected, ok = QtWidgets.QInputDialog.getItem(
             self, "Layout",
             "Elegí el layout de escritorio (se aplica al instante):",
             items, 0, False)
-        if not ok:
+        if not ok or selected not in items:
             return
+        sel = items.index(selected)
         code = layouts[sel]["id"]
         res = run(["utn-layout", code])
         if res.returncode == 0:

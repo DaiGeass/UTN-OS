@@ -61,20 +61,27 @@ copy_preset() {
 copy_preset lxqt/panel.conf lxqt/panel.conf
 copy_preset lxqt/lxqt.conf lxqt/lxqt.conf
 copy_preset openbox/rc.xml openbox/rc.xml
-copy_preset pcmanfm/settings.conf pcmanfm/lxqt/settings.conf
+copy_preset pcmanfm/settings.conf pcmanfm-qt/lxqt/settings.conf
 copy_preset kvantum/kvantum.kvconfig Kvantum/kvantum.kvconfig
 copy_preset picom.conf picom.conf
 
-if command -v picom >/dev/null 2>&1; then
-    pkill -x picom 2>/dev/null || true
-    picom --config "$CONF_DIR/picom.conf" >/dev/null 2>&1 &
+if command -v utn-picom >/dev/null 2>&1; then
+    utn-picom >/dev/null 2>&1 &
 fi
 
 if [ -n "${DISPLAY:-}" ]; then
     if command -v pcmanfm-qt >/dev/null 2>&1; then
-        for w in wallpaper.svg wallpaper.png; do
+        # El fondo solo se pinta si el escritorio PCManFM-Qt está activo.
+        if ! pgrep -x pcmanfm-qt >/dev/null 2>&1; then
+            (setsid pcmanfm-qt --desktop --profile=lxqt >/dev/null 2>&1 &)
+            for _ in $(seq 1 20); do
+                pgrep -x pcmanfm-qt >/dev/null 2>&1 && break
+                sleep 0.05
+            done
+        fi
+        for w in wallpaper.jpg wallpaper.png wallpaper.svg; do
             if [ -f "$SRC/$w" ]; then
-                pcmanfm-qt --set-wallpaper "$SRC/$w" >/dev/null 2>&1 || true
+                pcmanfm-qt --set-wallpaper "$SRC/$w" --wallpaper-mode zoom >/dev/null 2>&1 || true
                 break
             fi
         done
@@ -82,8 +89,16 @@ if [ -n "${DISPLAY:-}" ]; then
     if command -v openbox >/dev/null 2>&1; then
         openbox --reconfigure 2>/dev/null || true
     fi
+    # Reinicia el panel una sola vez y espera a que libere su instancia.
     if pgrep -x lxqt-panel >/dev/null 2>&1; then
         pkill -x lxqt-panel 2>/dev/null || true
+        for _ in $(seq 1 20); do
+            pgrep -x lxqt-panel >/dev/null 2>&1 || break
+            sleep 0.05
+        done
+    fi
+    sleep 0.2
+    if ! pgrep -x lxqt-panel >/dev/null 2>&1; then
         (setsid lxqt-panel >/dev/null 2>&1 &)
     fi
     echo "Layout '$LAYOUT' aplicado (cambios visibles al instante)."

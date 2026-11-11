@@ -4,7 +4,13 @@
 # luego /etc/xdg/picom.conf (default del build); por último fallback macos.
 set -euo pipefail
 
-pkill -x picom 2>/dev/null || true
+pkill -u "$(id -u)" -x picom 2>/dev/null || true
+
+# GLX por software puede dejar la VM en negro y consumir toda su CPU.
+# En una VM el escritorio funciona sin compositor.
+if systemd-detect-virt --vm --quiet; then
+    exit 0
+fi
 
 CONF=""
 for c in "$HOME/.config/picom.conf" /etc/xdg/picom.conf; do
